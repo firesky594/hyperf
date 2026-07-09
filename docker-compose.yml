@@ -1,19 +1,21 @@
 services:
-  hyperf-skeleton:
-    container_name: hyperf-skeleton
-    image: hyperf-skeleton
-    build:
-      dockerfile: dev.Dockerfile
-      args:
-        UID: 1000
-        GID: 1000
-    volumes:
-      - ./:/opt/www
+  hyperf_AEKi:
+    image: hyperf/hyperf:8.1-alpine-v3.18-swoole
+    #    container_name: ${CONTAINER_NAME}
+    deploy:
+      resources:
+        limits:
+          cpus: ${CPUS}
+          memory: ${MEMORY_LIMIT}
+    restart: always
+    working_dir: /data/project
+    stdin_open: true
+    tty: true
+    privileged: true
+    user: root
     network_mode: host
-    environment:
-      - APP_ENV=dev
-      - SCAN_CACHEABLE=false
-
-networks:
-  default:
-    name: hyperf-skeleton
+    entrypoint: sh -c "cd /data/project && if [ ! -d 'hyperf-skeleton' ]; then composer create-project hyperf/hyperf-skeleton --no-interaction; fi; cd /data/project/hyperf-skeleton && php bin/hyperf.php server:watch"
+    volumes:
+      - ${APP_PATH}/skeleton:/data/project
+    labels:
+      createdBy: "bt_apps"
