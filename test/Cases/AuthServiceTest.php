@@ -8,6 +8,7 @@ use App\Exception\AuthException;
 use App\Service\AuthService;
 use App\Service\RedisLock;
 use App\Service\RedisLockHandle;
+use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\DbConnection\Db;
 use Hyperf\Redis\Redis;
 use Mockery;
@@ -196,8 +197,99 @@ class AuthServiceTest extends TestCase
         }
     }
 
-    private function service(Db $db, Redis $redis, RedisLock $lock): AuthService
+    public function testRegisterRandomCreatesOneUserSynchronouslyWithoutLoginToken(): void
     {
-        return new AuthService($db, $redis, $lock, 7200, 10);
+        $db = Mockery::mock(Db::class);
+        $redis = Mockery::mock(Redis::class);
+        $lock = Mockery::mock(RedisLock::class);
+        $idGenerator = Mockery::mock(IdGeneratorInterface::class);
+        $capturedBindings = [];
+        $lockKey = null;
+
+        $idGenerator->shouldReceive('generate')->once()->withNoArgs()->andReturn(100001);
+        $lock->shouldReceive('acquire')
+            ->once()
+            ->withArgs(static function (string $key, int $ttl) use (&$lockKey): bool {
+                $lockKey = $key;
+
+                return str_starts_with($key, 'auth:register-lock:test_100001_') && $ttl === 10;
+            })
+            ->andReturnUsing(static fn (string $key): RedisLockHandle => new RedisLockHandle($key, 'lock-value'));
+        $db->shouldReceive('insert')
+            ->once()
+            ->withArgs(static function (string $sql, array $bindings) use (&$capturedBindings): bool {
+                $capturedBindings = $bindings;
+
+                return $sql === 'INSERT INTO users (id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())'
+                    && $bindings[0] === 100001
+                    && is_string($bindings[1])
+                    && preg_match('/^test_100001_[a-f0-9]{8}$/', $bindings[1]) === 1
+                    && is_string($bindings[2]);
+            })
+            ->andReturn(true);
+        $redis->shouldReceive('setex')->never();
+        $lock->shouldReceive('release')
+            ->once()
+            ->with(Mockery::on(static function (RedisLockHandle $handle) use (&$lockKey): bool {
+                return $handle->key === $lockKey;
+            }))
+            ->andReturn(true);
+
+        $result = $this->service(
+            $db,
+            $redis,
+            $lock,
+            $idGenerator,
+            static fn (string $password): string => 'hashed:' . $password
+        )->registerRandom();
+
+        self::assertSame('registered', $result['status']);
+        self::assertSame(100001, $result['user']['id']);
+        self::assertSame($capturedBindings[1], $result['user']['username']);
+        self::assertSame('hashed:' . $result['user']['password'], $capturedBindings[2]);
+        self::assertArrayNotHasKey('token', $result);
+    }
+
+    public function testRegisterRandomReturnsConflictWhenGeneratedUserLockIsHeld(): void
+    {
+        $db = Mockery::mock(Db::class);
+        $redis = Mockery::mock(Redis::class);
+        $lock = Mockery::mock(RedisLock::class);
+        $idGenerator = Mockery::mock(IdGeneratorInterface::class);
+
+        $idGenerator->shouldReceive('generate')->once()->withNoArgs()->andReturn(100001);
+        $lock->shouldReceive('acquire')
+            ->once()
+            ->withArgs(static fn (string $key, int $ttl): bool => str_starts_with($key, 'auth:register-lock:test_100001_') && $ttl === 10)
+            ->andReturn(null);
+        $db->shouldReceive('insert')->never();
+        $redis->shouldReceive('setex')->never();
+
+        try {
+            $this->service($db, $redis, $lock, $idGenerator)->registerRandom();
+            self::fail('Expected AuthException.');
+        } catch (AuthException $exception) {
+            self::assertSame(409, $exception->status());
+            self::assertSame('Registration request already in progress.', $exception->publicMessage());
+        }
+    }
+
+    private function service(
+        Db $db,
+        Redis $redis,
+        RedisLock $lock,
+        ?IdGeneratorInterface $idGenerator = null,
+        ?callable $passwordHasher = null
+    ): AuthService
+    {
+        return new AuthService(
+            $db,
+            $redis,
+            $lock,
+            $idGenerator ?? Mockery::mock(IdGeneratorInterface::class),
+            7200,
+            10,
+            $passwordHasher
+        );
     }
 }

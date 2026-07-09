@@ -15,6 +15,7 @@ Router::addRoute(['GET', 'POST', 'HEAD'], '/', 'App\Controller\IndexController@i
 Router::get('/demo/concurrent', 'App\Controller\DemoConcurrentController@index');
 Router::post('/auth/login', 'App\Controller\AuthController@login');
 Router::post('/auth/logout', 'App\Controller\AuthController@logout');
+Router::addRoute(['GET', 'POST'], '/auth/register-random', 'App\Controller\AuthController@registerRandom');
 
 Router::get('/favicon.ico', function () {
     return '';

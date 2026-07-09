@@ -14,6 +14,12 @@ class AuthSetupCommand extends Command
 
     protected string $description = 'Create auth tables and seed a demo user.';
 
+    /**
+     * 初始化认证数据准备命令。
+     *
+     * @param Db $db MySQL 访问入口，用于创建用户表和写入测试用户。
+     * @param IdGeneratorInterface $idGenerator 雪花 ID 生成器，用于生成用户主键。
+     */
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $idGenerator
@@ -21,6 +27,14 @@ class AuthSetupCommand extends Command
         parent::__construct();
     }
 
+    /**
+     * 执行认证数据初始化。
+     *
+     * 该命令会先确保 users 表存在，再根据命令参数创建或更新一个测试用户。
+     * 当 username 或 password 为空时，只创建表，不写入测试用户。
+     *
+     * @return int Symfony Console 命令退出码；成功时返回 Command::SUCCESS。
+     */
     public function handle(): int
     {
         $this->createUsersTable();
@@ -38,6 +52,13 @@ class AuthSetupCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * 创建用户表。
+     *
+     * users.id 使用 BIGINT UNSIGNED 存储雪花 ID，不使用 MySQL 自增主键。
+     *
+     * @return void
+     */
     private function createUsersTable(): void
     {
         $this->db->statement(<<<'SQL'
@@ -53,6 +74,15 @@ CREATE TABLE IF NOT EXISTS `users` (
 SQL);
     }
 
+    /**
+     * 创建或更新测试用户。
+     *
+     * 用户存在时只刷新密码哈希和更新时间；用户不存在时使用雪花 ID 创建新记录。
+     *
+     * @param string $username 测试用户名；由命令参数传入，调用前已去除首尾空白。
+     * @param string $password 测试用户明文密码；写入数据库前会使用 password_hash 生成哈希。
+     * @return void
+     */
     private function upsertDemoUser(string $username, string $password): void
     {
         $rows = $this->db->select('SELECT id FROM users WHERE username = ? LIMIT 1', [$username]);
@@ -67,7 +97,8 @@ SQL);
         }
 
         $this->db->insert(
-            'INSERT INTO users (id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+            'INSERT INTO users (id, username, password_hash, created_at, updated_at) '
+                . 'VALUES (?, ?, ?, NOW(), NOW())',
             [$this->idGenerator->generate(), $username, $passwordHash]
         );
     }

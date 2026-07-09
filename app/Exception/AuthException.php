@@ -32,6 +32,16 @@ class AuthException extends RuntimeException
         return new self(409, $message);
     }
 
+    public static function tooManyRequests(string $message): self
+    {
+        return new self(429, $message);
+    }
+
+    public static function serviceUnavailable(string $message, ?Throwable $previous = null): self
+    {
+        return new self(503, $message, $previous);
+    }
+
     public static function server(string $message, ?Throwable $previous = null): self
     {
         return new self(500, $message, $previous);

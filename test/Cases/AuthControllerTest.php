@@ -93,6 +93,26 @@ class AuthControllerTest extends TestCase
         self::assertSame($psrResponse, $result);
     }
 
+    public function testRegisterRandomReturnsSingleUserWithCreatedStatus(): void
+    {
+        $payload = [
+            'status' => 'registered',
+            'user' => ['id' => 1, 'username' => 'test_1_abcd', 'password' => 'secret-1'],
+        ];
+        $service = Mockery::mock(AuthService::class);
+        $request = Mockery::mock(RequestInterface::class);
+        $response = Mockery::mock(ResponseInterface::class);
+        $psrResponse = Mockery::mock(PsrResponseInterface::class);
+
+        $service->shouldReceive('registerRandom')->once()->withNoArgs()->andReturn($payload);
+        $response->shouldReceive('json')->once()->with($payload)->andReturn($psrResponse);
+        $psrResponse->shouldReceive('withStatus')->once()->with(201)->andReturn($psrResponse);
+
+        $result = $this->controller($service, $request, $response)->registerRandom();
+
+        self::assertSame($psrResponse, $result);
+    }
+
     private function controller(AuthService $service, RequestInterface $request, ResponseInterface $response): AuthController
     {
         $controller = new AuthController($service);

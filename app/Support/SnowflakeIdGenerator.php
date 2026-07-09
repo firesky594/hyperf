@@ -23,7 +23,14 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     private int $sequence = 0;
 
     /**
-     * @param null|callable():int $timeProvider
+     * 初始化雪花 ID 生成器。
+     *
+     * workerId 用于区分不同实例，默认读取 SNOWFLAKE_WORKER_ID。
+     * timeProvider 仅用于测试时注入固定毫秒时间，生产环境不传。
+     *
+     * @param null|int $workerId 工作节点 ID，取值范围 0 到 1023；为空时读取环境变量。
+     * @param null|callable():int $timeProvider 毫秒时间提供器；为空时使用 microtime(true)。
+     * @throws InvalidArgumentException workerId 超出可用范围时抛出。
      */
     public function __construct(
         private ?int $workerId = null,
@@ -32,10 +39,22 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
         $this->workerId = $workerId ?? (int) env('SNOWFLAKE_WORKER_ID', 1);
 
         if ($this->workerId < 0 || $this->workerId > self::MAX_WORKER_ID) {
-            throw new InvalidArgumentException(sprintf('Snowflake worker id must be between 0 and %d.', self::MAX_WORKER_ID));
+            throw new InvalidArgumentException(sprintf(
+                'Snowflake worker id must be between 0 and %d.',
+                self::MAX_WORKER_ID
+            ));
         }
     }
 
+    /**
+     * 生成一个雪花 ID。
+     *
+     * ID 由毫秒时间戳、workerId 和同毫秒序列号组成。
+     * 同一毫秒内连续生成时递增序列号；序列号用尽后等待下一毫秒。
+     *
+     * @return int 可直接写入 MySQL BIGINT UNSIGNED 的雪花 ID。
+     * @throws RuntimeException 检测到系统时间回拨时抛出，避免生成重复 ID。
+     */
     public function generate(): int
     {
         $timestamp = $this->currentTimeMillis();
@@ -63,6 +82,13 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
             | $this->sequence;
     }
 
+    /**
+     * 获取当前毫秒时间。
+     *
+     * 测试环境可以通过 timeProvider 控制返回值；生产环境使用系统时间。
+     *
+     * @return int 当前毫秒时间戳。
+     */
     private function currentTimeMillis(): int
     {
         if (is_callable($this->timeProvider)) {
@@ -72,6 +98,14 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
         return (int) floor(microtime(true) * 1000);
     }
 
+    /**
+     * 等待时间进入下一毫秒。
+     *
+     * 当同一毫秒内序列号耗尽时调用，确保下一个 ID 使用新的时间片。
+     *
+     * @param int $timestamp 当前已使用的毫秒时间戳。
+     * @return int 大于传入时间戳的下一毫秒时间戳。
+     */
     private function waitUntilNextMillis(int $timestamp): int
     {
         $next = $this->currentTimeMillis();
