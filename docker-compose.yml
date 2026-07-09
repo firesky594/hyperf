@@ -11,6 +11,8 @@ services:
       - ./:/opt/www
     ports:
       - 9501:9501
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - APP_ENV=dev
       - SCAN_CACHEABLE=false

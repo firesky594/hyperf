@@ -15,4 +15,4 @@ vendor/
 /phpstan.neon
 /phpunit.xml
 .superpowers/
-docs/superpowers/
+docs/
