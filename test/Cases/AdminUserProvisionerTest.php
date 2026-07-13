@@ -46,6 +46,32 @@ class AdminUserProvisionerTest extends TestCase
         );
     }
 
+    public function testDefaultHasherUsesPasswordBytesAfterBcryptLimit(): void
+    {
+        $db = Mockery::mock(Db::class);
+        $ids = Mockery::mock(IdGeneratorInterface::class);
+        $passwordHash = null;
+        $password = str_repeat('a', 72) . '-original-suffix';
+        $differentPassword = str_repeat('a', 72) . '-different-suffix';
+
+        $db->shouldReceive('statement')->once()->andReturn(true);
+        $db->shouldReceive('select')->once()->andReturn([]);
+        $ids->shouldReceive('generate')->once()->andReturn(9002);
+        $db->shouldReceive('insert')->once()->withArgs(
+            static function (string $sql, array $bindings) use (&$passwordHash): bool {
+                $passwordHash = $bindings[2];
+
+                return str_contains($sql, 'INSERT INTO admin_users');
+            }
+        )->andReturn(true);
+
+        (new AdminUserProvisioner($db, $ids))->provision('root_admin', $password);
+
+        self::assertIsString($passwordHash);
+        self::assertTrue(password_verify($password, $passwordHash));
+        self::assertFalse(password_verify($differentPassword, $passwordHash));
+    }
+
     public function testProvisionResetsExistingAdministrator(): void
     {
         $db = Mockery::mock(Db::class);

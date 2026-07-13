@@ -19,7 +19,7 @@ class AdminUserProvisioner
         ?callable $passwordHasher = null
     ) {
         $this->passwordHasher = $passwordHasher
-            ?? static fn (string $password): string => password_hash($password, PASSWORD_DEFAULT);
+            ?? static fn (string $password): string => password_hash($password, PASSWORD_ARGON2ID);
     }
 
     /**
