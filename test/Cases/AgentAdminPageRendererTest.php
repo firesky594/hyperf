@@ -56,6 +56,18 @@ class AgentAdminPageRendererTest extends TestCase
         self::assertStringNotContainsString('单一管理员', $html);
     }
 
+    public function testLongLoginValuesCanWrapInsideNarrowPanel(): void
+    {
+        $username = str_repeat('u', 64);
+        $error = str_repeat('E', 320);
+
+        $html = (new AgentAdminPageRenderer())->login('csrf-token', $username, $error);
+
+        self::assertStringContainsString('value="' . $username . '"', $html);
+        self::assertStringContainsString($error, $html);
+        $this->assertCssRuleAllowsUnbrokenValues($html, '\.alert');
+    }
+
     public function testHomeRendersEscapedSessionOverviewInShanghaiTime(): void
     {
         $html = (new AgentAdminPageRenderer())->home([
@@ -94,5 +106,61 @@ class AgentAdminPageRendererTest extends TestCase
         self::assertStringContainsString('role="alert"', $html);
         self::assertStringContainsString('稍后 &lt;script&gt;alert(1)&lt;/script&gt;', $html);
         self::assertStringNotContainsString('<script>', $html);
+    }
+
+    public function testLongOperatorValuesCanWrapInsideNarrowOverview(): void
+    {
+        $username = str_repeat('u', 64);
+        $adminId = str_repeat('9', 128);
+
+        $html = (new AgentAdminPageRenderer())->home([
+            'admin_id' => $adminId,
+            'username' => $username,
+            'issued_at' => 1783918800,
+            'expires_at' => 1783926000,
+            'csrf_token' => 'logout-token',
+        ]);
+
+        self::assertStringContainsString('<strong>' . $username . '</strong>', $html);
+        self::assertStringContainsString('<small>ID / ' . $adminId . '</small>', $html);
+        $this->assertCssRuleAllowsUnbrokenValues($html, '\.operator-chip');
+        $this->assertCssRuleAllowsUnbrokenValues(
+            $html,
+            '\.operator-chip span,\s*\.operator-chip strong,\s*\.operator-chip small'
+        );
+    }
+
+    public function testDynamicValuesEscapeApostrophesAmpersandsAndMalformedUtf8(): void
+    {
+        $malformedValue = "value'&\xC3(";
+        $escapedValue = 'value&#039;&amp;' . "\u{FFFD}(";
+        $renderer = new AgentAdminPageRenderer();
+
+        $login = $renderer->login($malformedValue, $malformedValue, $malformedValue);
+        self::assertStringContainsString('name="_csrf" value="' . $escapedValue . '"', $login);
+        self::assertStringContainsString('name="username" type="text" value="' . $escapedValue . '"', $login);
+        self::assertStringContainsString('role="alert" aria-live="assertive">' . $escapedValue, $login);
+
+        $home = $renderer->home([
+            'admin_id' => $malformedValue,
+            'username' => $malformedValue,
+            'issued_at' => 1783918800,
+            'expires_at' => 1783926000,
+            'csrf_token' => $malformedValue,
+        ]);
+        self::assertStringContainsString('<strong>' . $escapedValue . '</strong>', $home);
+        self::assertStringContainsString('<small>ID / ' . $escapedValue . '</small>', $home);
+        self::assertStringContainsString('name="_csrf" value="' . $escapedValue . '"', $home);
+
+        $unavailable = $renderer->unavailable($malformedValue);
+        self::assertStringContainsString('role="alert">' . $escapedValue . '</p>', $unavailable);
+    }
+
+    private function assertCssRuleAllowsUnbrokenValues(string $html, string $selectorPattern): void
+    {
+        $pattern = '~' . $selectorPattern
+            . '\s*\{(?=[^}]*min-width:\s*0\s*;)(?=[^}]*overflow-wrap:\s*anywhere\s*;)[^}]*\}~s';
+
+        self::assertSame(1, preg_match($pattern, $html), 'Expected responsive wrapping rule for ' . $selectorPattern);
     }
 }

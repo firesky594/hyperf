@@ -618,12 +618,14 @@ h1 {
 }
 
 .alert {
+    min-width: 0;
     margin: 24px 0 0;
     padding: 12px 14px;
     border-left: 3px solid var(--danger);
     color: #ffd4d0;
     background: rgba(255, 143, 133, .08);
     font-size: 14px;
+    overflow-wrap: anywhere;
 }
 
 .alert[hidden] {
@@ -824,17 +826,21 @@ h1 {
 }
 
 .operator-chip {
-    min-width: 220px;
+    min-width: 0;
     padding: 14px 16px;
+    flex: 0 1 220px;
     border-top: 1px solid var(--teal);
     border-bottom: 1px solid var(--rule);
     background: var(--ink-1);
+    overflow-wrap: anywhere;
 }
 
 .operator-chip span,
 .operator-chip strong,
 .operator-chip small {
+    min-width: 0;
     display: block;
+    overflow-wrap: anywhere;
 }
 
 .operator-chip span,

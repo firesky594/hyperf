@@ -83,6 +83,18 @@ class AgentAdminResponseFactoryTest extends TestCase
         $this->assertSecurityHeaders($response);
     }
 
+    public function testLoginCsrfCookieUsesSixHundredSecondDefaultTtl(): void
+    {
+        putenv('ADMIN_LOGIN_CSRF_TTL');
+        $before = time();
+
+        $response = $this->factory()->loginPage('<p>login</p>', 'csrf-token');
+
+        $cookie = $this->cookie($response, '/agent_admin/login', 'agent_admin_login_csrf');
+        self::assertGreaterThanOrEqual($before + 600, $cookie->getExpiresTime());
+        self::assertLessThanOrEqual(time() + 600, $cookie->getExpiresTime());
+    }
+
     public function testRedirectWithSessionIsRelativeSecureAndStrict(): void
     {
         putenv('ADMIN_COOKIE_SECURE=true');
@@ -146,6 +158,42 @@ class AgentAdminResponseFactoryTest extends TestCase
         }
     }
 
+    public function testFactoryResponsesRemainIsolatedWhenInstanceIsReused(): void
+    {
+        $factory = $this->factory();
+
+        $session = $factory->redirectWithSession('/agent_admin', 'session-token', time() + 7200);
+        self::assertSame(303, $session->getStatusCode());
+        self::assertSame('/agent_admin', $session->getHeaderLine('Location'));
+        self::assertSame('', (string) $session->getBody());
+        $this->cookie($session, '/agent_admin', 'agent_admin_session');
+
+        $html = $factory->html('<p>fresh html</p>');
+        self::assertSame(200, $html->getStatusCode());
+        self::assertSame('', $html->getHeaderLine('Location'));
+        self::assertSame('text/html; charset=utf-8', $html->getHeaderLine('Content-Type'));
+        self::assertSame('<p>fresh html</p>', (string) $html->getBody());
+        $this->assertNoCookies($html);
+        $this->assertSecurityHeaders($html);
+
+        $login = $factory->loginPage('<p>fresh login</p>', 'fresh-csrf', 201);
+        self::assertSame(201, $login->getStatusCode());
+        self::assertSame('', $login->getHeaderLine('Location'));
+        self::assertSame('<p>fresh login</p>', (string) $login->getBody());
+        $this->cookie($login, '/agent_admin/login', 'agent_admin_login_csrf');
+        self::assertInstanceOf(ServerResponse::class, $login);
+        self::assertArrayNotHasKey('/agent_admin', $login->getCookies()[''] ?? []);
+        $this->assertSecurityHeaders($login);
+
+        $redirect = $factory->redirect('/agent_admin/login', 307);
+        self::assertSame(307, $redirect->getStatusCode());
+        self::assertSame('/agent_admin/login', $redirect->getHeaderLine('Location'));
+        self::assertSame('text/plain; charset=utf-8', $redirect->getHeaderLine('Content-Type'));
+        self::assertSame('', (string) $redirect->getBody());
+        $this->assertNoCookies($redirect);
+        $this->assertSecurityHeaders($redirect);
+    }
+
     private function factory(): AgentAdminResponseFactory
     {
         return new AgentAdminResponseFactory(new Response(new ServerResponse()));
@@ -169,5 +217,11 @@ class AgentAdminResponseFactoryTest extends TestCase
         self::assertArrayHasKey($name, $cookies[''][$path]);
 
         return $cookies[''][$path][$name];
+    }
+
+    private function assertNoCookies(PsrResponseInterface $response): void
+    {
+        self::assertInstanceOf(ServerResponse::class, $response);
+        self::assertSame([], $response->getCookies());
     }
 }
