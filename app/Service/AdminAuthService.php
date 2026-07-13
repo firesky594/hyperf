@@ -125,6 +125,17 @@ LUA;
 return redis.call("ZREM", KEYS[1], ARGV[1])
 LUA;
 
+    private const ATTEMPT_SUCCESS_SCRIPT = <<<'LUA'
+local active = redis.call("ZSCORE", KEYS[2], ARGV[1])
+if not active then
+    return 0
+end
+
+redis.call("ZREM", KEYS[2], ARGV[1])
+redis.call("DEL", KEYS[1])
+return 1
+LUA;
+
     private int $tokenTtl;
 
     private int $maxAttempts;
@@ -161,6 +172,8 @@ LUA;
      */
     public function login(string $username, string $password, string $clientIp): array
     {
+        $this->validateLoginInput($username, $password);
+
         $failureKey = $this->failureKey($username, $clientIp);
         $activeReservationKey = $this->activeReservationKey($failureKey);
         $reservationId = null;
@@ -170,8 +183,6 @@ LUA;
             $this->reserveAttempt($failureKey, $activeReservationKey, $reservationId);
 
             $user = $this->authenticateInTransaction($username, $password);
-            $this->releaseAttempt($activeReservationKey, $reservationId);
-            $reservationId = null;
 
             $now = (int) ($this->clock)();
             $token = bin2hex(random_bytes(32));
@@ -188,6 +199,9 @@ LUA;
             if ($cached !== true && $cached !== 'OK') {
                 throw AdminAuthException::unavailable();
             }
+
+            $this->clearAttemptsAfterSuccess($failureKey, $activeReservationKey, $reservationId);
+            $reservationId = null;
 
             return [
                 'token' => $token,
@@ -394,6 +408,21 @@ LUA;
         }
     }
 
+    private function clearAttemptsAfterSuccess(
+        string $failureKey,
+        string $activeReservationKey,
+        string $reservationId
+    ): void {
+        $result = $this->redis->eval(
+            self::ATTEMPT_SUCCESS_SCRIPT,
+            [$failureKey, $activeReservationKey, 'a:' . $reservationId],
+            2
+        );
+        if ($result !== 0 && $result !== 1) {
+            throw AdminAuthException::unavailable();
+        }
+    }
+
     private function bestEffortFinalizeFailure(
         string $failureKey,
         string $activeReservationKey,
@@ -426,6 +455,17 @@ LUA;
     private function activeReservationKey(string $failureKey): string
     {
         return $failureKey . ':active';
+    }
+
+    private function validateLoginInput(string $username, string $password): void
+    {
+        if (
+            preg_match('/^[A-Za-z0-9._-]{3,64}$/D', $username) !== 1
+            || $password === ''
+            || strlen($password) > 4096
+        ) {
+            throw AdminAuthException::validation();
+        }
     }
 
     private function deleteSession(string $key): void

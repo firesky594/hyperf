@@ -62,7 +62,7 @@ class AdminAuthServiceTest extends TestCase
                 $reservationId = $value;
             }
         );
-        $this->expectAttemptRelease(
+        $this->expectAttemptSuccess(
             $redis,
             $failureKey,
             static function () use (&$reservationId): string {
@@ -108,6 +108,52 @@ class AdminAuthServiceTest extends TestCase
         self::assertSame(self::NOW + 7200, $session['expires_at']);
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/D', $session['csrf_token']);
         self::assertSame($session, $result['session']);
+    }
+
+    /**
+     * @dataProvider invalidLoginInputProvider
+     */
+    public function testLoginRejectsInvalidInputBeforeRedisDatabaseOrPasswordVerification(
+        string $username,
+        string $password
+    ): void {
+        $db = Mockery::mock(Db::class);
+        $redis = Mockery::mock(Redis::class);
+        $verificationCalls = 0;
+
+        $db->shouldReceive('transaction')->never();
+        $redis->shouldReceive('eval')->never();
+        $redis->shouldReceive('setex')->never();
+
+        try {
+            $this->service(
+                $db,
+                $redis,
+                static function () use (&$verificationCalls): bool {
+                    ++$verificationCalls;
+
+                    return false;
+                }
+            )->login($username, $password, '203.0.113.10');
+            self::fail('Expected AdminAuthException.');
+        } catch (AdminAuthException $exception) {
+            self::assertSame(422, $exception->status());
+            self::assertSame('Invalid administrator input.', $exception->publicMessage());
+        }
+
+        self::assertSame(0, $verificationCalls);
+    }
+
+    /**
+     * @return iterable<string,array{string,string}>
+     */
+    public static function invalidLoginInputProvider(): iterable
+    {
+        yield 'missing username' => ['', 'correct-password'];
+        yield 'invalid username format' => ['bad username', 'correct-password'];
+        yield 'username too long' => [str_repeat('a', 65), 'correct-password'];
+        yield 'missing password' => ['root_admin', ''];
+        yield 'password too long' => ['root_admin', str_repeat('p', 4097)];
     }
 
     public function testLoginRejectsWrongPasswordAndRecordsFailure(): void
@@ -326,7 +372,7 @@ class AdminAuthServiceTest extends TestCase
                 $reservationId = $value;
             }
         );
-        $this->expectAttemptRelease(
+        $this->expectAttemptSuccess(
             $redis,
             $failureKey,
             static function () use (&$reservationId): string {
@@ -469,6 +515,26 @@ class AdminAuthServiceTest extends TestCase
         self::assertLessThan($missingOwnerPosition, $activeReservationPosition);
         self::assertLessThan($removeActivePosition, $missingOwnerPosition);
         self::assertLessThan($addFailurePosition, $removeActivePosition);
+    }
+
+    public function testSuccessfulAttemptCleanupRequiresExactOwnershipBeforeDeletingFailures(): void
+    {
+        $successScript = $this->scriptConstant('ATTEMPT_SUCCESS_SCRIPT');
+        $activeReservationPosition = strpos(
+            $successScript,
+            'local active = redis.call("ZSCORE", KEYS[2], ARGV[1])'
+        );
+        $missingOwnerPosition = strpos($successScript, "if not active then\n    return 0\nend");
+        $removeActivePosition = strpos($successScript, 'redis.call("ZREM", KEYS[2], ARGV[1])');
+        $deleteFailuresPosition = strpos($successScript, 'redis.call("DEL", KEYS[1])');
+
+        self::assertIsInt($activeReservationPosition);
+        self::assertIsInt($missingOwnerPosition);
+        self::assertIsInt($removeActivePosition);
+        self::assertIsInt($deleteFailuresPosition);
+        self::assertLessThan($missingOwnerPosition, $activeReservationPosition);
+        self::assertLessThan($removeActivePosition, $missingOwnerPosition);
+        self::assertLessThan($deleteFailuresPosition, $removeActivePosition);
     }
 
     public function testTwoCredentialFailuresFinalizeDistinctReservationsThroughTheFixedWindowScript(): void
@@ -652,7 +718,7 @@ class AdminAuthServiceTest extends TestCase
         }
     }
 
-    public function testReleaseResponseLossRetriesTheSameReservationWithoutTouchingAnotherMember(): void
+    public function testSuccessCleanupResponseLossReleasesSameReservationWithoutTouchingAnotherMember(): void
     {
         $db = Mockery::mock(Db::class);
         $connection = Mockery::mock(ConnectionInterface::class);
@@ -670,6 +736,12 @@ class AdminAuthServiceTest extends TestCase
                 $reservationId = $value;
             }
         );
+        $successMatcher = $this->attemptSuccessMatcher(
+            $failureKey,
+            static function () use (&$reservationId): string {
+                return (string) $reservationId;
+            }
+        );
         $releaseMatcher = $this->attemptReleaseMatcher(
             $failureKey,
             static function () use (&$reservationId): string {
@@ -679,7 +751,7 @@ class AdminAuthServiceTest extends TestCase
                 $releasedReservationIds[] = $value;
             }
         );
-        $redis->shouldReceive('eval')->once()->withArgs($releaseMatcher)->ordered()
+        $redis->shouldReceive('eval')->once()->withArgs($successMatcher)->ordered()
             ->andThrow(new RuntimeException('redis response lost'));
         $redis->shouldReceive('eval')->once()->withArgs($releaseMatcher)->ordered()->andReturn(0);
         $this->expectTransaction($db, $connection);
@@ -691,7 +763,7 @@ class AdminAuthServiceTest extends TestCase
                 'status' => 1,
             ]]);
         $connection->shouldReceive('update')->once()->andReturn(1);
-        $redis->shouldReceive('setex')->never();
+        $redis->shouldReceive('setex')->once()->andReturn(true);
 
         try {
             $this->service($db, $redis)->login('root_admin', 'correct-password', '203.0.113.10');
@@ -704,7 +776,7 @@ class AdminAuthServiceTest extends TestCase
         }
 
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/D', (string) $reservationId);
-        self::assertSame([$reservationId, $reservationId], $releasedReservationIds);
+        self::assertSame([$reservationId], $releasedReservationIds);
         self::assertNotContains($otherReservationId, $releasedReservationIds);
     }
 
@@ -980,6 +1052,17 @@ class AdminAuthServiceTest extends TestCase
             ->andReturn($result);
     }
 
+    private function expectAttemptSuccess(
+        Redis $redis,
+        string $key,
+        callable $reservationId,
+        int $result = 1
+    ): void {
+        $redis->shouldReceive('eval')->once()
+            ->withArgs($this->attemptSuccessMatcher($key, $reservationId))
+            ->andReturn($result);
+    }
+
     private function expectAttemptFinalization(
         Redis $redis,
         string $key,
@@ -1013,6 +1096,20 @@ class AdminAuthServiceTest extends TestCase
             return $numberOfKeys === 1
                 && str_contains($script, 'ZREM')
                 && ! str_contains($script, 'DECR');
+        };
+    }
+
+    private function attemptSuccessMatcher(string $key, callable $reservationId): Closure
+    {
+        return function (string $script, array $arguments, int $numberOfKeys) use ($key, $reservationId): bool {
+            return $arguments === [
+                $key,
+                $this->activeReservationKey($key),
+                'a:' . $reservationId(),
+            ]
+                && $numberOfKeys === 2
+                && str_contains($script, 'redis.call("ZREM", KEYS[2], ARGV[1])')
+                && str_contains($script, 'redis.call("DEL", KEYS[1])');
         };
     }
 

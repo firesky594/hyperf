@@ -16,6 +16,7 @@ use App\Exception\AdminAuthException;
 use App\Http\AgentAdminResponseFactory;
 use App\Service\AdminAuthService;
 use App\View\AgentAdminPageRenderer;
+use Hyperf\Contract\StdoutLoggerInterface;
 use Psr\Http\Message\ResponseInterface;
 
 class AgentAdminAuthController extends AbstractController
@@ -23,7 +24,8 @@ class AgentAdminAuthController extends AbstractController
     public function __construct(
         private AdminAuthService $auth,
         private AgentAdminPageRenderer $pages,
-        private AgentAdminResponseFactory $responses
+        private AgentAdminResponseFactory $responses,
+        private StdoutLoggerInterface $logger
     ) {
     }
 
@@ -37,7 +39,7 @@ class AgentAdminAuthController extends AbstractController
                     return $this->responses->redirect('/agent_admin');
                 }
             } catch (AdminAuthException $exception) {
-                return $this->errorPage($exception);
+                return $this->errorPage($exception, 'agent_admin.login_page.infrastructure_failure');
             }
         }
 
@@ -51,6 +53,8 @@ class AgentAdminAuthController extends AbstractController
 
     public function login(): ResponseInterface
     {
+        $username = '';
+
         try {
             $cookieToken = (string) ($this->request->getCookieParams()['agent_admin_login_csrf'] ?? '');
             $formToken = (string) $this->request->input('_csrf', '');
@@ -58,9 +62,13 @@ class AgentAdminAuthController extends AbstractController
                 throw AdminAuthException::invalidFormToken();
             }
 
+            $username = (string) $this->request->input('username', '');
+            $password = (string) $this->request->input('password', '');
+            $this->validateLoginInput($username, $password);
+
             $result = $this->auth->login(
-                (string) $this->request->input('username', ''),
-                (string) $this->request->input('password', ''),
+                $username,
+                $password,
                 (string) $this->request->server('remote_addr', 'unknown')
             );
 
@@ -70,12 +78,13 @@ class AgentAdminAuthController extends AbstractController
                 $result['session']['expires_at']
             );
         } catch (AdminAuthException $exception) {
+            $this->logInfrastructureFailure($exception, 'agent_admin.login.infrastructure_failure');
             $replacementToken = $this->newFormToken();
 
             return $this->responses->loginPage(
                 $this->pages->login(
                     $replacementToken,
-                    (string) $this->request->input('username', ''),
+                    $username !== '' ? $username : (string) $this->request->input('username', ''),
                     $exception->publicMessage()
                 ),
                 $replacementToken,
@@ -98,7 +107,7 @@ class AgentAdminAuthController extends AbstractController
 
             return $this->responses->redirectClearingSession('/agent_admin/login', 303);
         } catch (AdminAuthException $exception) {
-            return $this->errorPage($exception);
+            return $this->errorPage($exception, 'agent_admin.logout.infrastructure_failure');
         }
     }
 
@@ -107,11 +116,37 @@ class AgentAdminAuthController extends AbstractController
         return bin2hex(random_bytes(32));
     }
 
-    private function errorPage(AdminAuthException $exception): ResponseInterface
+    private function errorPage(AdminAuthException $exception, string $event): ResponseInterface
     {
+        $this->logInfrastructureFailure($exception, $event);
+
         return $this->responses->html(
             $this->pages->error($exception->status(), $exception->publicMessage()),
             $exception->status()
         );
+    }
+
+    private function validateLoginInput(string $username, string $password): void
+    {
+        if (
+            preg_match('/^[A-Za-z0-9._-]{3,64}$/D', $username) !== 1
+            || $password === ''
+            || strlen($password) > 4096
+        ) {
+            throw AdminAuthException::validation();
+        }
+    }
+
+    private function logInfrastructureFailure(AdminAuthException $exception, string $event): void
+    {
+        if ($exception->status() !== 503) {
+            return;
+        }
+
+        $internal = $exception->getPrevious() ?? $exception;
+        $this->logger->error($event, [
+            'exception_type' => $internal::class,
+            'exception' => $internal,
+        ]);
     }
 }

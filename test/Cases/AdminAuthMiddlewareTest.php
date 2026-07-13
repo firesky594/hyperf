@@ -17,6 +17,7 @@ use App\Http\AgentAdminResponseFactory;
 use App\Middleware\AdminAuthMiddleware;
 use App\Service\AdminAuthService;
 use App\View\AgentAdminPageRenderer;
+use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\HttpMessage\Cookie\Cookie;
 use Hyperf\HttpMessage\Server\Request;
 use Hyperf\HttpMessage\Server\Response as ServerResponse;
@@ -26,6 +27,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use RuntimeException;
 
 /**
  * @internal
@@ -102,18 +104,27 @@ class AdminAuthMiddlewareTest extends TestCase
     public function testRedisFailureReturns503Page(): void
     {
         $token = str_repeat('c', 64);
+        $previous = new RuntimeException('session redis unavailable');
         $request = (new Request('GET', '/agent_admin'))
             ->withCookieParams(['agent_admin_session' => $token]);
         $auth = Mockery::mock(AdminAuthService::class);
         $handler = Mockery::mock(RequestHandlerInterface::class);
+        $logger = Mockery::mock(StdoutLoggerInterface::class);
 
         $auth->shouldReceive('resolveSession')
             ->once()
             ->with($token)
-            ->andThrow(AdminAuthException::unavailable('Session store unavailable.'));
+            ->andThrow(AdminAuthException::unavailable('Session store unavailable.', $previous));
         $handler->shouldReceive('handle')->never();
+        $logger->shouldReceive('error')->once()->with(
+            'agent_admin.session.infrastructure_failure',
+            Mockery::on(static fn (array $context): bool => $context === [
+                'exception_type' => RuntimeException::class,
+                'exception' => $previous,
+            ])
+        );
 
-        $response = $this->middleware($auth)->process($request, $handler);
+        $response = $this->middleware($auth, $logger)->process($request, $handler);
 
         self::assertSame(503, $response->getStatusCode());
         self::assertSame('text/html; charset=utf-8', $response->getHeaderLine('Content-Type'));
@@ -122,12 +133,15 @@ class AdminAuthMiddlewareTest extends TestCase
         self::assertStringContainsString('Session store unavailable.', (string) $response->getBody());
     }
 
-    private function middleware(AdminAuthService $auth): AdminAuthMiddleware
-    {
+    private function middleware(
+        AdminAuthService $auth,
+        ?StdoutLoggerInterface $logger = null
+    ): AdminAuthMiddleware {
         return new AdminAuthMiddleware(
             $auth,
             new AgentAdminPageRenderer(),
-            new AgentAdminResponseFactory(new Response(new ServerResponse()))
+            new AgentAdminResponseFactory(new Response(new ServerResponse())),
+            $logger ?? Mockery::mock(StdoutLoggerInterface::class)->shouldIgnoreMissing()
         );
     }
 

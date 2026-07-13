@@ -16,6 +16,7 @@ use App\Exception\AdminAuthException;
 use App\Http\AgentAdminResponseFactory;
 use App\Service\AdminAuthService;
 use App\View\AgentAdminPageRenderer;
+use Hyperf\Contract\StdoutLoggerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -26,7 +27,8 @@ class AdminAuthMiddleware implements MiddlewareInterface
     public function __construct(
         private AdminAuthService $auth,
         private AgentAdminPageRenderer $pages,
-        private AgentAdminResponseFactory $responses
+        private AgentAdminResponseFactory $responses,
+        private StdoutLoggerInterface $logger
     ) {
     }
 
@@ -49,10 +51,25 @@ class AdminAuthMiddleware implements MiddlewareInterface
                     ->withAttribute('admin_session_token', $token)
             );
         } catch (AdminAuthException $exception) {
+            $this->logInfrastructureFailure($exception);
+
             return $this->responses->html(
                 $this->pages->error($exception->status(), $exception->publicMessage()),
                 $exception->status()
             );
         }
+    }
+
+    private function logInfrastructureFailure(AdminAuthException $exception): void
+    {
+        if ($exception->status() !== 503) {
+            return;
+        }
+
+        $internal = $exception->getPrevious() ?? $exception;
+        $this->logger->error('agent_admin.session.infrastructure_failure', [
+            'exception_type' => $internal::class,
+            'exception' => $internal,
+        ]);
     }
 }
