@@ -9,7 +9,10 @@ declare(strict_types=1);
  * @contact  group@hyperf.io
  * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
  */
+use App\Command\AdminSetupCommand;
+use App\Command\AuthSetupCommand;
+
 return [
-    App\Command\AuthSetupCommand::class,
-    App\Command\AdminSetupCommand::class,
+    AuthSetupCommand::class,
+    AdminSetupCommand::class,
 ];

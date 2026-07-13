@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
 
 namespace App\View;
 
@@ -237,8 +245,17 @@ HTML;
 
     public function unavailable(string $message = '后台服务暂时不可用，请稍后再试。'): string
     {
+        return $this->error(503, $message);
+    }
+
+    public function error(int $status, string $message): string
+    {
         $message = $this->escape($message);
         $styles = $this->styles();
+        [$title, $eyebrow, $heading, $footer] = match ($status) {
+            419 => ['请求验证失败', 'REQUEST REJECTED', '请求验证失败', 'RELOAD AND RETRY'],
+            default => ['服务暂不可用', 'SERVICE INTERRUPTED', '后台服务暂不可用', 'RETRY LATER'],
+        };
 
         return <<<HTML
 <!doctype html>
@@ -247,7 +264,7 @@ HTML;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <title>服务暂不可用 · Agent Admin</title>
+    <title>{$title} · Agent Admin</title>
     <style>{$styles}</style>
 </head>
 <body class="status-page">
@@ -260,14 +277,14 @@ HTML;
     </header>
     <main id="main-content" class="status-main" tabindex="-1">
         <section class="status-panel" aria-labelledby="status-heading">
-            <p class="status-code" aria-hidden="true">503</p>
-            <p class="eyebrow">SERVICE INTERRUPTED</p>
-            <h1 id="status-heading">后台服务暂不可用</h1>
+            <p class="status-code" aria-hidden="true">{$status}</p>
+            <p class="eyebrow">{$eyebrow}</p>
+            <h1 id="status-heading">{$heading}</h1>
             <p class="status-message" role="alert">{$message}</p>
             <a class="action-link" href="/agent_admin/login">返回登录入口 <span aria-hidden="true">→</span></a>
         </section>
     </main>
-    <footer class="site-footer"><span>AGENT ADMIN</span><span>RETRY LATER</span></footer>
+    <footer class="site-footer"><span>AGENT ADMIN</span><span>{$footer}</span></footer>
 </body>
 </html>
 HTML;

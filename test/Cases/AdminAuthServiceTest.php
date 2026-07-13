@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
 
 namespace HyperfTest\Cases;
 
@@ -12,6 +20,7 @@ use Hyperf\DbConnection\Db;
 use Hyperf\Redis\Redis;
 use Mockery;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use RuntimeException;
 
 /**
@@ -954,8 +963,7 @@ class AdminAuthServiceTest extends TestCase
         string $key,
         int $result,
         ?callable $captureReservationId = null
-    ): void
-    {
+    ): void {
         $redis->shouldReceive('eval')->once()
             ->withArgs($this->attemptReservationMatcher($key, $captureReservationId))
             ->andReturn($result);
@@ -966,8 +974,7 @@ class AdminAuthServiceTest extends TestCase
         string $key,
         callable $reservationId,
         int $result = 1
-    ): void
-    {
+    ): void {
         $redis->shouldReceive('eval')->once()
             ->withArgs($this->attemptReleaseMatcher($key, $reservationId))
             ->andReturn($result);
@@ -1083,7 +1090,7 @@ class AdminAuthServiceTest extends TestCase
 
     private function scriptConstant(string $name): string
     {
-        $constant = (new \ReflectionClass(AdminAuthService::class))->getReflectionConstant($name);
+        $constant = (new ReflectionClass(AdminAuthService::class))->getReflectionConstant($name);
         self::assertNotFalse($constant, sprintf('Missing Lua script constant %s.', $name));
         $value = $constant->getValue();
         self::assertIsString($value);

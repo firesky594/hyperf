@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
 
 namespace HyperfTest\Cases;
 
@@ -209,6 +217,8 @@ class AgentAdminControllerTest extends TestCase
 
         self::assertSame(419, $response->getStatusCode());
         self::assertSame('', $response->getHeaderLine('Location'));
+        self::assertStringContainsString('>419<', (string) $response->getBody());
+        self::assertStringNotContainsString('>503<', (string) $response->getBody());
         self::assertStringContainsString('Invalid form token.', (string) $response->getBody());
         self::assertSame([], $this->cookies($response));
         $this->assertSecurityHeaders($response);

@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
 
 namespace App\Controller;
 
@@ -102,7 +110,7 @@ class AgentAdminAuthController extends AbstractController
     private function errorPage(AdminAuthException $exception): ResponseInterface
     {
         return $this->responses->html(
-            $this->pages->unavailable($exception->publicMessage()),
+            $this->pages->error($exception->status(), $exception->publicMessage()),
             $exception->status()
         );
     }

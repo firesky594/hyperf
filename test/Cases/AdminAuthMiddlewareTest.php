@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
 
 namespace HyperfTest\Cases;
 
@@ -9,6 +17,7 @@ use App\Http\AgentAdminResponseFactory;
 use App\Middleware\AdminAuthMiddleware;
 use App\Service\AdminAuthService;
 use App\View\AgentAdminPageRenderer;
+use Hyperf\HttpMessage\Cookie\Cookie;
 use Hyperf\HttpMessage\Server\Request;
 use Hyperf\HttpMessage\Server\Response as ServerResponse;
 use Hyperf\HttpServer\Response;
@@ -109,6 +118,7 @@ class AdminAuthMiddlewareTest extends TestCase
         self::assertSame(503, $response->getStatusCode());
         self::assertSame('text/html; charset=utf-8', $response->getHeaderLine('Content-Type'));
         self::assertSame('no-store', $response->getHeaderLine('Cache-Control'));
+        self::assertStringContainsString('>503<', (string) $response->getBody());
         self::assertStringContainsString('Session store unavailable.', (string) $response->getBody());
     }
 
@@ -135,7 +145,7 @@ class AdminAuthMiddlewareTest extends TestCase
         ];
     }
 
-    private function sessionCookie(ResponseInterface $response): \Hyperf\HttpMessage\Cookie\Cookie
+    private function sessionCookie(ResponseInterface $response): Cookie
     {
         self::assertInstanceOf(ServerResponse::class, $response);
         $cookies = $response->getCookies();

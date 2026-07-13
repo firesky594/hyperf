@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
 
 namespace HyperfTest\Cases;
 
@@ -103,9 +111,21 @@ class AgentAdminPageRendererTest extends TestCase
         $html = (new AgentAdminPageRenderer())->unavailable('稍后 <script>alert(1)</script>');
 
         self::assertSame(1, substr_count($html, '<h1'));
+        self::assertStringContainsString('>503<', $html);
         self::assertStringContainsString('role="alert"', $html);
         self::assertStringContainsString('稍后 &lt;script&gt;alert(1)&lt;/script&gt;', $html);
         self::assertStringNotContainsString('<script>', $html);
+    }
+
+    public function testErrorPageReflectsFormTokenFailureInsteadOfClaimingServiceOutage(): void
+    {
+        $html = (new AgentAdminPageRenderer())->error(419, 'Invalid form token.');
+
+        self::assertStringContainsString('>419<', $html);
+        self::assertStringContainsString('请求验证失败', $html);
+        self::assertStringContainsString('Invalid form token.', $html);
+        self::assertStringNotContainsString('>503<', $html);
+        self::assertStringNotContainsString('后台服务暂不可用', $html);
     }
 
     public function testLongOperatorValuesCanWrapInsideNarrowOverview(): void

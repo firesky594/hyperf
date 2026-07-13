@@ -1,6 +1,14 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * This file is part of Hyperf.
+ *
+ * @link     https://www.hyperf.io
+ * @document https://hyperf.wiki
+ * @contact  group@hyperf.io
+ * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ */
 
 namespace App\Service;
 
@@ -448,7 +456,7 @@ LUA;
             && $session['issued_at'] <= $now
             && is_int($session['expires_at'])
             && $session['expires_at'] > $session['issued_at']
-            && $session['expires_at'] - $session['issued_at'] === $this->tokenTtl
+            && $this->tokenTtl === $session['expires_at'] - $session['issued_at']
             && $session['expires_at'] > $now
             && is_string($session['csrf_token'])
             && preg_match('/^[a-f0-9]{64}$/D', $session['csrf_token']) === 1;
