@@ -40,12 +40,26 @@ class AdminAuthServiceTest extends TestCase
         $connection = Mockery::mock(ConnectionInterface::class);
         $redis = Mockery::mock(Redis::class);
         $failureKey = $this->failureKey('root_admin', '203.0.113.10');
+        $reservationId = null;
         $storedKey = null;
         $storedPayload = null;
         $committed = false;
 
-        $this->expectAttemptReservation($redis, $failureKey, 1);
-        $this->expectAttemptRelease($redis, $failureKey);
+        $this->expectAttemptReservation(
+            $redis,
+            $failureKey,
+            1,
+            static function (string $value) use (&$reservationId): void {
+                $reservationId = $value;
+            }
+        );
+        $this->expectAttemptRelease(
+            $redis,
+            $failureKey,
+            static function () use (&$reservationId): string {
+                return (string) $reservationId;
+            }
+        );
         $this->expectTransaction($db, $connection, static function () use (&$committed): void {
             $committed = true;
         });
@@ -75,6 +89,7 @@ class AdminAuthServiceTest extends TestCase
         $session = json_decode((string) $storedPayload, true, 512, JSON_THROW_ON_ERROR);
 
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/D', $result['token']);
+        self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/D', (string) $reservationId);
         self::assertSame(7200, $result['expires_in']);
         self::assertSame('admin:session:' . hash('sha256', $result['token']), $storedKey);
         self::assertStringNotContainsString($result['token'], (string) $storedKey);
@@ -292,9 +307,23 @@ class AdminAuthServiceTest extends TestCase
         $redis = Mockery::mock(Redis::class);
         $failureKey = $this->failureKey('root_admin', '203.0.113.10');
         $committed = false;
+        $reservationId = null;
 
-        $this->expectAttemptReservation($redis, $failureKey, 1);
-        $this->expectAttemptRelease($redis, $failureKey);
+        $this->expectAttemptReservation(
+            $redis,
+            $failureKey,
+            1,
+            static function (string $value) use (&$reservationId): void {
+                $reservationId = $value;
+            }
+        );
+        $this->expectAttemptRelease(
+            $redis,
+            $failureKey,
+            static function () use (&$reservationId): string {
+                return (string) $reservationId;
+            }
+        );
         $this->expectTransaction($db, $connection, static function () use (&$committed): void {
             $committed = true;
         });
@@ -327,9 +356,23 @@ class AdminAuthServiceTest extends TestCase
         $connection = Mockery::mock(ConnectionInterface::class);
         $redis = Mockery::mock(Redis::class);
         $failureKey = $this->failureKey('root_admin', '203.0.113.10');
+        $reservationId = null;
 
-        $this->expectAttemptReservation($redis, $failureKey, 1);
-        $this->expectAttemptRelease($redis, $failureKey);
+        $this->expectAttemptReservation(
+            $redis,
+            $failureKey,
+            1,
+            static function (string $value) use (&$reservationId): void {
+                $reservationId = $value;
+            }
+        );
+        $this->expectAttemptRelease(
+            $redis,
+            $failureKey,
+            static function () use (&$reservationId): string {
+                return (string) $reservationId;
+            }
+        );
         $this->expectTransaction($db, $connection);
         $connection->shouldReceive('select')->once()->with(self::USER_QUERY, ['root_admin'])
             ->andReturn([[
@@ -379,10 +422,16 @@ class AdminAuthServiceTest extends TestCase
         $connection = Mockery::mock(ConnectionInterface::class);
         $redis = Mockery::mock(Redis::class);
         $failureKey = $this->failureKey('root_admin', '203.0.113.10');
+        $reservationIds = [];
 
         $redis->shouldReceive('eval')->twice()
-            ->withArgs($this->attemptReservationMatcher($failureKey))
-            ->andReturn(5, -1);
+            ->withArgs($this->attemptReservationMatcher(
+                $failureKey,
+                static function (string $value) use (&$reservationIds): void {
+                    $reservationIds[] = $value;
+                }
+            ))
+            ->andReturn(1, -1);
         $redis->shouldReceive('get')->never();
         $redis->shouldReceive('incr')->never();
         $redis->shouldReceive('expire')->never();
@@ -414,6 +463,9 @@ class AdminAuthServiceTest extends TestCase
         } catch (AdminAuthException $exception) {
             self::assertSame(429, $exception->status());
         }
+
+        self::assertCount(2, $reservationIds);
+        self::assertNotSame($reservationIds[0], $reservationIds[1]);
     }
 
     public function testLoginReleasesReservedAttemptWhenDatabaseInfrastructureFails(): void
@@ -421,9 +473,23 @@ class AdminAuthServiceTest extends TestCase
         $db = Mockery::mock(Db::class);
         $redis = Mockery::mock(Redis::class);
         $failureKey = $this->failureKey('root_admin', '203.0.113.10');
+        $reservationId = null;
 
-        $this->expectAttemptReservation($redis, $failureKey, 1);
-        $this->expectAttemptRelease($redis, $failureKey);
+        $this->expectAttemptReservation(
+            $redis,
+            $failureKey,
+            1,
+            static function (string $value) use (&$reservationId): void {
+                $reservationId = $value;
+            }
+        );
+        $this->expectAttemptRelease(
+            $redis,
+            $failureKey,
+            static function () use (&$reservationId): string {
+                return (string) $reservationId;
+            }
+        );
         $db->shouldReceive('transaction')->once()->andThrow(new RuntimeException('database unavailable'));
         $redis->shouldReceive('setex')->never();
 
@@ -433,6 +499,97 @@ class AdminAuthServiceTest extends TestCase
         } catch (AdminAuthException $exception) {
             self::assertSame(503, $exception->status());
             self::assertSame('Administrator authentication unavailable.', $exception->publicMessage());
+        }
+    }
+
+    public function testReleaseResponseLossRetriesTheSameReservationWithoutTouchingAnotherMember(): void
+    {
+        $db = Mockery::mock(Db::class);
+        $connection = Mockery::mock(ConnectionInterface::class);
+        $redis = Mockery::mock(Redis::class);
+        $failureKey = $this->failureKey('root_admin', '203.0.113.10');
+        $reservationId = null;
+        $releasedReservationIds = [];
+        $otherReservationId = str_repeat('f', 64);
+
+        $this->expectAttemptReservation(
+            $redis,
+            $failureKey,
+            1,
+            static function (string $value) use (&$reservationId): void {
+                $reservationId = $value;
+            }
+        );
+        $releaseMatcher = $this->attemptReleaseMatcher(
+            $failureKey,
+            static function () use (&$reservationId): string {
+                return (string) $reservationId;
+            },
+            static function (string $value) use (&$releasedReservationIds): void {
+                $releasedReservationIds[] = $value;
+            }
+        );
+        $redis->shouldReceive('eval')->once()->withArgs($releaseMatcher)->ordered()
+            ->andThrow(new RuntimeException('redis response lost'));
+        $redis->shouldReceive('eval')->once()->withArgs($releaseMatcher)->ordered()->andReturn(0);
+        $this->expectTransaction($db, $connection);
+        $connection->shouldReceive('select')->once()->with(self::USER_QUERY, ['root_admin'])
+            ->andReturn([[
+                'id' => 41,
+                'username' => 'root_admin',
+                'password_hash' => self::VALID_PASSWORD_HASH,
+                'status' => 1,
+            ]]);
+        $connection->shouldReceive('update')->once()->andReturn(1);
+        $redis->shouldReceive('setex')->never();
+
+        try {
+            $this->service($db, $redis)->login('root_admin', 'correct-password', '203.0.113.10');
+            self::fail('Expected AdminAuthException.');
+        } catch (AdminAuthException $exception) {
+            self::assertSame(503, $exception->status());
+            self::assertSame('Administrator authentication unavailable.', $exception->publicMessage());
+            self::assertInstanceOf(RuntimeException::class, $exception->getPrevious());
+            self::assertSame('redis response lost', $exception->getPrevious()?->getMessage());
+        }
+
+        self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/D', (string) $reservationId);
+        self::assertSame([$reservationId, $reservationId], $releasedReservationIds);
+        self::assertNotContains($otherReservationId, $releasedReservationIds);
+    }
+
+    public function testCleanupRedisExceptionDoesNotMaskDatabaseInfrastructureFailure(): void
+    {
+        $db = Mockery::mock(Db::class);
+        $redis = Mockery::mock(Redis::class);
+        $failureKey = $this->failureKey('root_admin', '203.0.113.10');
+        $reservationId = null;
+
+        $this->expectAttemptReservation(
+            $redis,
+            $failureKey,
+            1,
+            static function (string $value) use (&$reservationId): void {
+                $reservationId = $value;
+            }
+        );
+        $redis->shouldReceive('eval')->once()->withArgs($this->attemptReleaseMatcher(
+            $failureKey,
+            static function () use (&$reservationId): string {
+                return (string) $reservationId;
+            }
+        ))->andThrow(new RuntimeException('redis cleanup unavailable'));
+        $db->shouldReceive('transaction')->once()->andThrow(new RuntimeException('database unavailable'));
+        $redis->shouldReceive('setex')->never();
+
+        try {
+            $this->service($db, $redis)->login('root_admin', 'correct-password', '203.0.113.10');
+            self::fail('Expected AdminAuthException.');
+        } catch (AdminAuthException $exception) {
+            self::assertSame(503, $exception->status());
+            self::assertSame('Administrator authentication unavailable.', $exception->publicMessage());
+            self::assertInstanceOf(RuntimeException::class, $exception->getPrevious());
+            self::assertSame('database unavailable', $exception->getPrevious()?->getMessage());
         }
     }
 
@@ -563,31 +720,80 @@ class AdminAuthServiceTest extends TestCase
         return 'admin:login:fail:' . hash('sha256', strtolower($username) . chr(0) . $clientIp);
     }
 
-    private function expectAttemptReservation(Redis $redis, string $key, int $result): void
+    private function expectAttemptReservation(
+        Redis $redis,
+        string $key,
+        int $result,
+        ?callable $captureReservationId = null
+    ): void
     {
         $redis->shouldReceive('eval')->once()
-            ->withArgs($this->attemptReservationMatcher($key))
+            ->withArgs($this->attemptReservationMatcher($key, $captureReservationId))
             ->andReturn($result);
     }
 
-    private function expectAttemptRelease(Redis $redis, string $key): void
+    private function expectAttemptRelease(
+        Redis $redis,
+        string $key,
+        callable $reservationId,
+        int $result = 1
+    ): void
     {
-        $redis->shouldReceive('eval')->once()->withArgs(
-            static fn (string $script, array $arguments, int $numberOfKeys): bool => $arguments === [$key]
-                && $numberOfKeys === 1
-                && str_contains($script, 'DECR')
-                && str_contains($script, 'DEL')
-        )->andReturn(1);
+        $redis->shouldReceive('eval')->once()
+            ->withArgs($this->attemptReleaseMatcher($key, $reservationId))
+            ->andReturn($result);
     }
 
-    private function attemptReservationMatcher(string $key): Closure
+    private function attemptReleaseMatcher(
+        string $key,
+        callable $reservationId,
+        ?callable $captureReservationId = null
+    ): Closure {
+        return static function (
+            string $script,
+            array $arguments,
+            int $numberOfKeys
+        ) use ($key, $reservationId, $captureReservationId): bool {
+            if ($arguments !== [$key, $reservationId()]) {
+                return false;
+            }
+
+            if ($captureReservationId !== null) {
+                $captureReservationId($arguments[1]);
+            }
+
+            return $numberOfKeys === 1
+                && str_contains($script, 'ZREM')
+                && ! str_contains($script, 'DECR');
+        };
+    }
+
+    private function attemptReservationMatcher(string $key, ?callable $captureReservationId = null): Closure
     {
-        return static fn (string $script, array $arguments, int $numberOfKeys): bool => $arguments === [$key, 5, 300]
-            && $numberOfKeys === 1
-            && str_contains($script, 'INCR')
-            && str_contains($script, 'TTL')
-            && str_contains($script, 'EXPIRE')
-            && str_contains($script, 'return -1');
+        return static function (string $script, array $arguments, int $numberOfKeys) use ($key, $captureReservationId): bool {
+            if (
+                count($arguments) !== 4
+                || $arguments[0] !== $key
+                || ! is_string($arguments[1])
+                || preg_match('/^[a-f0-9]{64}$/D', $arguments[1]) !== 1
+                || $arguments[2] !== 5
+                || $arguments[3] !== 300
+            ) {
+                return false;
+            }
+
+            if ($captureReservationId !== null) {
+                $captureReservationId($arguments[1]);
+            }
+
+            return $numberOfKeys === 1
+                && str_contains($script, 'TIME')
+                && str_contains($script, 'ZREMRANGEBYSCORE')
+                && str_contains($script, 'ZCARD')
+                && str_contains($script, 'ZADD')
+                && str_contains($script, 'EXPIRE')
+                && ! str_contains($script, 'INCR');
+        };
     }
 
     private function expectTransaction(

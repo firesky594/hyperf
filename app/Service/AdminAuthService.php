@@ -26,35 +26,28 @@ class AdminAuthService
     private const DUMMY_PASSWORD_HASH = '$argon2id$v=19$m=65536,t=4,p=1$dzRMa1Iua1ovSjRyNTk3NA$fan7A8YiM2t8b2PtiRPArU7SCT4zWAiNkzo4/kj2F8w';
 
     private const ATTEMPT_RESERVATION_SCRIPT = <<<'LUA'
-local maximum = tonumber(ARGV[1])
-local window = tonumber(ARGV[2])
-local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+local now_parts = redis.call("TIME")
+local now = tonumber(now_parts[1]) + (tonumber(now_parts[2]) / 1000000)
+local maximum = tonumber(ARGV[2])
+local window = tonumber(ARGV[3])
 
-if current == nil or current < 0 then
-    redis.call("DEL", KEYS[1])
-    current = 0
-end
-
-if current >= maximum then
-    if redis.call("TTL", KEYS[1]) < 0 then
-        redis.call("EXPIRE", KEYS[1], window)
-    end
+redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
+if redis.call("ZCARD", KEYS[1]) >= maximum then
+    redis.call("EXPIRE", KEYS[1], window)
     return -1
 end
 
-local reserved = redis.call("INCR", KEYS[1])
-if redis.call("TTL", KEYS[1]) < 0 then
-    redis.call("EXPIRE", KEYS[1], window)
+local added = redis.call("ZADD", KEYS[1], "NX", now + window, ARGV[1])
+if added ~= 1 then
+    return -2
 end
-return reserved
+
+redis.call("EXPIRE", KEYS[1], window)
+return 1
 LUA;
 
     private const ATTEMPT_RELEASE_SCRIPT = <<<'LUA'
-local current = tonumber(redis.call("GET", KEYS[1]) or "0")
-if current == nil or current <= 1 then
-    return redis.call("DEL", KEYS[1])
-end
-return redis.call("DECR", KEYS[1])
+return redis.call("ZREM", KEYS[1], ARGV[1])
 LUA;
 
     private int $tokenTtl;
@@ -94,15 +87,15 @@ LUA;
     public function login(string $username, string $password, string $clientIp): array
     {
         $failureKey = $this->failureKey($username, $clientIp);
-        $reserved = false;
+        $reservationId = null;
 
         try {
-            $this->reserveAttempt($failureKey);
-            $reserved = true;
+            $reservationId = bin2hex(random_bytes(32));
+            $this->reserveAttempt($failureKey, $reservationId);
 
             $user = $this->authenticateInTransaction($username, $password);
-            $this->releaseAttempt($failureKey);
-            $reserved = false;
+            $this->releaseAttempt($failureKey, $reservationId);
+            $reservationId = null;
 
             $now = (int) ($this->clock)();
             $token = bin2hex(random_bytes(32));
@@ -126,14 +119,14 @@ LUA;
                 'session' => $session,
             ];
         } catch (AdminAuthException $exception) {
-            if ($reserved && $exception->status() !== 401) {
-                $this->releaseAttempt($failureKey);
+            if ($reservationId !== null && ! in_array($exception->status(), [401, 429], true)) {
+                $this->bestEffortRelease($failureKey, $reservationId);
             }
 
             throw $exception;
         } catch (Throwable $throwable) {
-            if ($reserved) {
-                $this->releaseAttempt($failureKey);
+            if ($reservationId !== null) {
+                $this->bestEffortRelease($failureKey, $reservationId);
             }
 
             throw AdminAuthException::unavailable(previous: $throwable);
@@ -258,27 +251,35 @@ LUA;
         return is_array($user) ? $user : null;
     }
 
-    private function reserveAttempt(string $key): void
+    private function reserveAttempt(string $key, string $reservationId): void
     {
         $result = $this->redis->eval(
             self::ATTEMPT_RESERVATION_SCRIPT,
-            [$key, $this->maxAttempts, $this->loginWindow],
+            [$key, $reservationId, $this->maxAttempts, $this->loginWindow],
             1
         );
         if ($result === -1) {
             throw AdminAuthException::rateLimited();
         }
 
-        if (! is_int($result) || $result < 1 || $result > $this->maxAttempts) {
+        if ($result !== 1) {
             throw AdminAuthException::unavailable();
         }
     }
 
-    private function releaseAttempt(string $key): void
+    private function releaseAttempt(string $key, string $reservationId): void
     {
-        $result = $this->redis->eval(self::ATTEMPT_RELEASE_SCRIPT, [$key], 1);
-        if (! is_int($result) || $result < 0) {
+        $result = $this->redis->eval(self::ATTEMPT_RELEASE_SCRIPT, [$key, $reservationId], 1);
+        if ($result !== 0 && $result !== 1) {
             throw AdminAuthException::unavailable();
+        }
+    }
+
+    private function bestEffortRelease(string $key, string $reservationId): void
+    {
+        try {
+            $this->releaseAttempt($key, $reservationId);
+        } catch (Throwable) {
         }
     }
 
