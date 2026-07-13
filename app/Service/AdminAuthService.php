@@ -177,6 +177,7 @@ LUA;
         $failureKey = $this->failureKey($username, $clientIp);
         $activeReservationKey = $this->activeReservationKey($failureKey);
         $reservationId = null;
+        $sessionKey = null;
 
         try {
             $reservationId = bin2hex(random_bytes(32));
@@ -195,7 +196,8 @@ LUA;
             ];
             $payload = json_encode($session, JSON_THROW_ON_ERROR);
 
-            $cached = $this->redis->setex($this->sessionKey($token), $this->tokenTtl, $payload);
+            $sessionKey = $this->sessionKey($token);
+            $cached = $this->redis->setex($sessionKey, $this->tokenTtl, $payload);
             if ($cached !== true && $cached !== 'OK') {
                 throw AdminAuthException::unavailable();
             }
@@ -209,6 +211,10 @@ LUA;
                 'session' => $session,
             ];
         } catch (AdminAuthException $exception) {
+            if ($sessionKey !== null) {
+                $this->bestEffortDeleteSession($sessionKey);
+            }
+
             if ($reservationId !== null && $exception->status() === 401) {
                 try {
                     $this->finalizeFailure($failureKey, $activeReservationKey, $reservationId);
@@ -227,6 +233,10 @@ LUA;
 
             throw $exception;
         } catch (Throwable $throwable) {
+            if ($sessionKey !== null) {
+                $this->bestEffortDeleteSession($sessionKey);
+            }
+
             if ($reservationId !== null) {
                 $this->bestEffortRelease($activeReservationKey, $reservationId);
             }
@@ -438,6 +448,14 @@ LUA;
     {
         try {
             $this->releaseAttempt($activeReservationKey, $reservationId);
+        } catch (Throwable) {
+        }
+    }
+
+    private function bestEffortDeleteSession(string $key): void
+    {
+        try {
+            $this->deleteSession($key);
         } catch (Throwable) {
         }
     }

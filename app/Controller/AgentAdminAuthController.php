@@ -31,7 +31,8 @@ class AgentAdminAuthController extends AbstractController
 
     public function loginPage(): ResponseInterface
     {
-        $sessionToken = trim((string) ($this->request->getCookieParams()['agent_admin_session'] ?? ''));
+        $rawSessionToken = $this->request->getCookieParams()['agent_admin_session'] ?? '';
+        $sessionToken = is_string($rawSessionToken) ? trim($rawSessionToken) : '';
 
         if ($sessionToken !== '') {
             try {
@@ -53,23 +54,37 @@ class AgentAdminAuthController extends AbstractController
 
     public function login(): ResponseInterface
     {
-        $username = '';
+        $rawUsername = $this->request->input('username', '');
+        $username = is_string($rawUsername) ? $rawUsername : '';
 
         try {
-            $cookieToken = (string) ($this->request->getCookieParams()['agent_admin_login_csrf'] ?? '');
-            $formToken = (string) $this->request->input('_csrf', '');
-            if ($cookieToken === '' || $formToken === '' || ! hash_equals($cookieToken, $formToken)) {
+            $cookieToken = $this->request->getCookieParams()['agent_admin_login_csrf'] ?? '';
+            $formToken = $this->request->input('_csrf', '');
+            if (
+                ! is_string($cookieToken)
+                || ! is_string($formToken)
+                || $cookieToken === ''
+                || $formToken === ''
+                || ! hash_equals($cookieToken, $formToken)
+            ) {
                 throw AdminAuthException::invalidFormToken();
             }
 
-            $username = (string) $this->request->input('username', '');
-            $password = (string) $this->request->input('password', '');
+            $rawPassword = $this->request->input('password', '');
+            if (! is_string($rawUsername) || ! is_string($rawPassword)) {
+                throw AdminAuthException::validation();
+            }
+
+            $password = $rawPassword;
             $this->validateLoginInput($username, $password);
+
+            $rawClientIp = $this->request->server('remote_addr', 'unknown');
+            $clientIp = is_string($rawClientIp) && $rawClientIp !== '' ? $rawClientIp : 'unknown';
 
             $result = $this->auth->login(
                 $username,
                 $password,
-                (string) $this->request->server('remote_addr', 'unknown')
+                $clientIp
             );
 
             return $this->responses->redirectWithSession(
@@ -84,7 +99,7 @@ class AgentAdminAuthController extends AbstractController
             return $this->responses->loginPage(
                 $this->pages->login(
                     $replacementToken,
-                    $username !== '' ? $username : (string) $this->request->input('username', ''),
+                    $username,
                     $exception->publicMessage()
                 ),
                 $replacementToken,
@@ -97,13 +112,20 @@ class AgentAdminAuthController extends AbstractController
     {
         try {
             $session = $this->request->getAttribute('admin_session');
-            $sessionCsrf = is_array($session) ? (string) ($session['csrf_token'] ?? '') : '';
-            $formCsrf = (string) $this->request->input('_csrf', '');
-            if ($sessionCsrf === '' || $formCsrf === '' || ! hash_equals($sessionCsrf, $formCsrf)) {
+            $sessionCsrf = is_array($session) ? ($session['csrf_token'] ?? '') : '';
+            $formCsrf = $this->request->input('_csrf', '');
+            if (
+                ! is_string($sessionCsrf)
+                || ! is_string($formCsrf)
+                || $sessionCsrf === ''
+                || $formCsrf === ''
+                || ! hash_equals($sessionCsrf, $formCsrf)
+            ) {
                 throw AdminAuthException::invalidFormToken();
             }
 
-            $this->auth->logout((string) $this->request->getAttribute('admin_session_token', ''));
+            $rawSessionToken = $this->request->getAttribute('admin_session_token', '');
+            $this->auth->logout(is_string($rawSessionToken) ? $rawSessionToken : '');
 
             return $this->responses->redirectClearingSession('/agent_admin/login', 303);
         } catch (AdminAuthException $exception) {
@@ -144,9 +166,8 @@ class AgentAdminAuthController extends AbstractController
         }
 
         $internal = $exception->getPrevious() ?? $exception;
-        $this->logger->error($event, [
+        $this->logger->error($event . ' exception_type={exception_type}', [
             'exception_type' => $internal::class,
-            'exception' => $internal,
         ]);
     }
 }

@@ -34,7 +34,8 @@ class AdminAuthMiddleware implements MiddlewareInterface
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $token = trim((string) ($request->getCookieParams()['agent_admin_session'] ?? ''));
+        $rawToken = $request->getCookieParams()['agent_admin_session'] ?? '';
+        $token = is_string($rawToken) ? trim($rawToken) : '';
         if ($token === '') {
             return $this->responses->redirectClearingSession('/agent_admin/login');
         }
@@ -67,9 +68,8 @@ class AdminAuthMiddleware implements MiddlewareInterface
         }
 
         $internal = $exception->getPrevious() ?? $exception;
-        $this->logger->error('agent_admin.session.infrastructure_failure', [
+        $this->logger->error('agent_admin.session.infrastructure_failure exception_type={exception_type}', [
             'exception_type' => $internal::class,
-            'exception' => $internal,
         ]);
     }
 }

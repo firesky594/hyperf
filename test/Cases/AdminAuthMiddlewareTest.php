@@ -59,6 +59,22 @@ class AdminAuthMiddlewareTest extends TestCase
         self::assertSame('', $this->sessionCookie($response)->getValue());
     }
 
+    public function testNonStringSessionCookieRedirectsWithoutResolvingSession(): void
+    {
+        $auth = Mockery::mock(AdminAuthService::class);
+        $handler = Mockery::mock(RequestHandlerInterface::class);
+        $auth->shouldReceive('resolveSession')->never();
+        $handler->shouldReceive('handle')->never();
+        $request = (new Request('GET', '/agent_admin'))
+            ->withCookieParams(['agent_admin_session' => ['bad']]);
+
+        $response = $this->middleware($auth)->process($request, $handler);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/agent_admin/login', $response->getHeaderLine('Location'));
+        self::assertSame('', $this->sessionCookie($response)->getValue());
+    }
+
     public function testValidSessionAddsRequestAttributesAndCallsHandler(): void
     {
         $token = str_repeat('a', 64);
@@ -117,10 +133,9 @@ class AdminAuthMiddlewareTest extends TestCase
             ->andThrow(AdminAuthException::unavailable('Session store unavailable.', $previous));
         $handler->shouldReceive('handle')->never();
         $logger->shouldReceive('error')->once()->with(
-            'agent_admin.session.infrastructure_failure',
+            'agent_admin.session.infrastructure_failure exception_type={exception_type}',
             Mockery::on(static fn (array $context): bool => $context === [
                 'exception_type' => RuntimeException::class,
-                'exception' => $previous,
             ])
         );
 

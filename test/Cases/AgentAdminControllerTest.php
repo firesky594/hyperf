@@ -14,7 +14,9 @@ namespace HyperfTest\Cases;
 
 use App\Exception\AdminAuthException;
 use App\Service\AdminAuthService;
+use Hyperf\Contract\ConfigInterface;
 use Hyperf\Contract\StdoutLoggerInterface;
+use Hyperf\Framework\Logger\StdoutLogger;
 use Hyperf\HttpMessage\Cookie\Cookie;
 use Hyperf\HttpMessage\Server\Response as ServerResponse;
 use Hyperf\Testing\Client;
@@ -22,6 +24,7 @@ use Hyperf\Testing\TestCase;
 use Mockery;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 use function Hyperf\Support\make;
 
@@ -65,6 +68,20 @@ class AgentAdminControllerTest extends TestCase
         $this->assertSecurityHeaders($response);
     }
 
+    public function testLoginPageTreatsNonStringSessionCookieAsMissing(): void
+    {
+        $auth = $this->mock(AdminAuthService::class);
+        $auth->shouldReceive('resolveSession')->never();
+
+        $response = $this->request('GET', '/agent_admin/login', [], [
+            'agent_admin_session' => ['bad'],
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('action="/agent_admin/login"', (string) $response->getBody());
+        $this->assertSecurityHeaders($response);
+    }
+
     public function testLoginPageAuthInfrastructureErrorReturnsSecured503(): void
     {
         $token = str_repeat('b', 64);
@@ -79,13 +96,39 @@ class AgentAdminControllerTest extends TestCase
             'agent_admin_session' => $token,
         ]);
 
-        $this->assertInfrastructureLogged($logger, 'agent_admin.login_page.infrastructure_failure', $previous);
+        $this->assertInfrastructureLogged($logger, 'agent_admin.login_page.infrastructure_failure');
 
         self::assertSame(503, $response->getStatusCode());
         self::assertSame('', $response->getHeaderLine('Location'));
         self::assertStringContainsString('Administrator session unavailable.', (string) $response->getBody());
         self::assertSame([], $this->cookies($response));
         $this->assertSecurityHeaders($response);
+    }
+
+    public function testRuntimeStdoutLogContainsSafeInfrastructureCauseType(): void
+    {
+        $token = str_repeat('9', 64);
+        $previous = new RuntimeException('redis failed password=must-not-be-logged');
+        $auth = $this->mock(AdminAuthService::class);
+        $output = new BufferedOutput();
+        $config = $this->getContainer()->get(ConfigInterface::class);
+        $this->instance(StdoutLoggerInterface::class, new StdoutLogger($config, $output));
+        $auth->shouldReceive('resolveSession')
+            ->once()
+            ->with($token)
+            ->andThrow(AdminAuthException::unavailable('Administrator session unavailable.', $previous));
+
+        $response = $this->request('GET', '/agent_admin/login', [], [
+            'agent_admin_session' => $token,
+        ]);
+
+        $logged = $output->fetch();
+        self::assertStringContainsString(
+            '[ERROR] agent_admin.login_page.infrastructure_failure exception_type=RuntimeException',
+            $logged
+        );
+        self::assertStringNotContainsString('must-not-be-logged', $logged);
+        self::assertSame(503, $response->getStatusCode());
     }
 
     public function testBadLoginCsrfReturns419WithoutAuthenticatingOrRetainingPassword(): void
@@ -149,6 +192,50 @@ class AgentAdminControllerTest extends TestCase
         yield 'missing password' => [[
             'username' => 'route-admin',
         ]];
+    }
+
+    /**
+     * @dataProvider nonStringLoginFieldProvider
+     * @param array<string,mixed> $overrides
+     */
+    public function testNonStringLoginFieldsAreRejectedWithoutCallingAuthentication(
+        array $overrides,
+        int $status,
+        string $message
+    ): void {
+        $csrf = str_repeat('8', 64);
+        $auth = $this->mock(AdminAuthService::class);
+        $auth->shouldReceive('login')->never();
+
+        $response = $this->request('POST', '/agent_admin/login', [
+            '_csrf' => $csrf,
+            'username' => 'route-admin',
+            'password' => 'array-field-secret',
+            ...$overrides,
+        ], [
+            'agent_admin_login_csrf' => $csrf,
+        ]);
+
+        self::assertSame($status, $response->getStatusCode());
+        self::assertStringContainsString($message, (string) $response->getBody());
+        self::assertStringNotContainsString('array-field-secret', (string) $response->getBody());
+        $this->assertSecurityHeaders($response);
+    }
+
+    /**
+     * @return iterable<string,array{array<string,mixed>,int,string}>
+     */
+    public static function nonStringLoginFieldProvider(): iterable
+    {
+        yield 'array csrf' => [[
+            '_csrf' => ['bad'],
+        ], 419, 'Invalid form token.'];
+        yield 'array username' => [[
+            'username' => ['bad'],
+        ], 422, 'Invalid administrator input.'];
+        yield 'array password' => [[
+            'password' => ['bad'],
+        ], 422, 'Invalid administrator input.'];
     }
 
     public function testLoginAuthErrorRotatesCsrfAndPreservesOnlyUsername(): void
@@ -266,6 +353,25 @@ class AgentAdminControllerTest extends TestCase
         $this->assertSecurityHeaders($response);
     }
 
+    public function testNonStringLogoutCsrfReturns419WithoutDeletingSession(): void
+    {
+        $token = str_repeat('3', 64);
+        $session = $this->session();
+        $auth = $this->mock(AdminAuthService::class);
+        $auth->shouldReceive('resolveSession')->once()->with($token)->andReturn($session);
+        $auth->shouldReceive('logout')->never();
+
+        $response = $this->request('POST', '/agent_admin/logout', [
+            '_csrf' => ['bad'],
+        ], [
+            'agent_admin_session' => $token,
+        ]);
+
+        self::assertSame(419, $response->getStatusCode());
+        self::assertStringContainsString('Invalid form token.', (string) $response->getBody());
+        $this->assertSecurityHeaders($response);
+    }
+
     public function testLogoutDeletesExactMiddlewareTokenAndClearsCookieWith303(): void
     {
         $token = str_repeat('5', 64);
@@ -304,7 +410,7 @@ class AgentAdminControllerTest extends TestCase
             'agent_admin_session' => $token,
         ]);
 
-        $this->assertInfrastructureLogged($logger, 'agent_admin.logout.infrastructure_failure', $previous);
+        $this->assertInfrastructureLogged($logger, 'agent_admin.logout.infrastructure_failure');
 
         self::assertSame(503, $response->getStatusCode());
         self::assertSame('', $response->getHeaderLine('Location'));
@@ -315,7 +421,7 @@ class AgentAdminControllerTest extends TestCase
 
     /**
      * @param array<string,mixed> $form
-     * @param array<string,string> $cookies
+     * @param array<string,mixed> $cookies
      */
     private function request(string $method, string $path, array $form = [], array $cookies = []): ResponseInterface
     {
@@ -373,14 +479,12 @@ class AgentAdminControllerTest extends TestCase
 
     private function assertInfrastructureLogged(
         StdoutLoggerInterface $logger,
-        string $event,
-        RuntimeException $previous
+        string $event
     ): void {
         $logger->shouldHaveReceived('error')->once()->with(
-            $event,
+            $event . ' exception_type={exception_type}',
             Mockery::on(static fn (array $context): bool => $context === [
                 'exception_type' => RuntimeException::class,
-                'exception' => $previous,
             ])
         );
     }

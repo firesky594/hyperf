@@ -726,6 +726,7 @@ class AdminAuthServiceTest extends TestCase
         $failureKey = $this->failureKey('root_admin', '203.0.113.10');
         $reservationId = null;
         $releasedReservationIds = [];
+        $storedSessionKey = null;
         $otherReservationId = str_repeat('f', 64);
 
         $this->expectAttemptReservation(
@@ -763,7 +764,18 @@ class AdminAuthServiceTest extends TestCase
                 'status' => 1,
             ]]);
         $connection->shouldReceive('update')->once()->andReturn(1);
-        $redis->shouldReceive('setex')->once()->andReturn(true);
+        $redis->shouldReceive('setex')->once()->withArgs(
+            static function (string $key) use (&$storedSessionKey): bool {
+                $storedSessionKey = $key;
+
+                return str_starts_with($key, 'admin:session:');
+            }
+        )->andReturn(true);
+        $redis->shouldReceive('del')->once()->withArgs(
+            static function (string $key) use (&$storedSessionKey): bool {
+                return $key === $storedSessionKey;
+            }
+        )->andReturn(1);
 
         try {
             $this->service($db, $redis)->login('root_admin', 'correct-password', '203.0.113.10');
@@ -776,6 +788,7 @@ class AdminAuthServiceTest extends TestCase
         }
 
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/D', (string) $reservationId);
+        self::assertIsString($storedSessionKey);
         self::assertSame([$reservationId], $releasedReservationIds);
         self::assertNotContains($otherReservationId, $releasedReservationIds);
     }
