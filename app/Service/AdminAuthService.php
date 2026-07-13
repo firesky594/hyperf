@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Exception\AdminAuthException;
+use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 use Hyperf\Redis\Redis;
 use JsonException;
@@ -14,11 +15,47 @@ use function Hyperf\Support\env;
 
 class AdminAuthService
 {
-    private const USER_QUERY = 'SELECT id, username, password_hash, status FROM admin_users WHERE username = ? LIMIT 1';
+    private const USER_QUERY = 'SELECT id, username, password_hash, status FROM admin_users WHERE username = ? LIMIT 1 FOR UPDATE';
+
+    private const ENABLED_QUERY = 'SELECT id, status FROM admin_users WHERE id = ? LIMIT 1 FOR UPDATE';
 
     private const SESSION_PREFIX = 'admin:session:';
 
     private const FAILURE_PREFIX = 'admin:login:fail:';
+
+    private const DUMMY_PASSWORD_HASH = '$argon2id$v=19$m=65536,t=4,p=1$dzRMa1Iua1ovSjRyNTk3NA$fan7A8YiM2t8b2PtiRPArU7SCT4zWAiNkzo4/kj2F8w';
+
+    private const ATTEMPT_RESERVATION_SCRIPT = <<<'LUA'
+local maximum = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+
+if current == nil or current < 0 then
+    redis.call("DEL", KEYS[1])
+    current = 0
+end
+
+if current >= maximum then
+    if redis.call("TTL", KEYS[1]) < 0 then
+        redis.call("EXPIRE", KEYS[1], window)
+    end
+    return -1
+end
+
+local reserved = redis.call("INCR", KEYS[1])
+if redis.call("TTL", KEYS[1]) < 0 then
+    redis.call("EXPIRE", KEYS[1], window)
+end
+return reserved
+LUA;
+
+    private const ATTEMPT_RELEASE_SCRIPT = <<<'LUA'
+local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+if current == nil or current <= 1 then
+    return redis.call("DEL", KEYS[1])
+end
+return redis.call("DECR", KEYS[1])
+LUA;
 
     private int $tokenTtl;
 
@@ -56,22 +93,16 @@ class AdminAuthService
      */
     public function login(string $username, string $password, string $clientIp): array
     {
+        $failureKey = $this->failureKey($username, $clientIp);
+        $reserved = false;
+
         try {
-            $failureKey = $this->failureKey($username, $clientIp);
-            if ($this->failureCount($failureKey) >= $this->maxAttempts) {
-                throw AdminAuthException::rateLimited();
-            }
+            $this->reserveAttempt($failureKey);
+            $reserved = true;
 
-            $user = $this->findUser($username);
-            $passwordValid = $user !== null
-                && isset($user['password_hash'])
-                && is_string($user['password_hash'])
-                && (bool) ($this->passwordVerifier)($password, $user['password_hash']);
-
-            if (! $passwordValid || (int) ($user['status'] ?? 0) !== 1) {
-                $this->recordFailure($failureKey);
-                throw AdminAuthException::invalidCredentials();
-            }
+            $user = $this->authenticateInTransaction($username, $password);
+            $this->releaseAttempt($failureKey);
+            $reserved = false;
 
             $now = (int) ($this->clock)();
             $token = bin2hex(random_bytes(32));
@@ -84,11 +115,6 @@ class AdminAuthService
             ];
             $payload = json_encode($session, JSON_THROW_ON_ERROR);
 
-            $this->db->update(
-                'UPDATE admin_users SET last_login_at = NOW() WHERE id = ?',
-                [$session['admin_id']]
-            );
-
             $cached = $this->redis->setex($this->sessionKey($token), $this->tokenTtl, $payload);
             if ($cached !== true && $cached !== 'OK') {
                 throw AdminAuthException::unavailable();
@@ -100,8 +126,16 @@ class AdminAuthService
                 'session' => $session,
             ];
         } catch (AdminAuthException $exception) {
+            if ($reserved && $exception->status() !== 401) {
+                $this->releaseAttempt($failureKey);
+            }
+
             throw $exception;
         } catch (Throwable $throwable) {
+            if ($reserved) {
+                $this->releaseAttempt($failureKey);
+            }
+
             throw AdminAuthException::unavailable(previous: $throwable);
         }
     }
@@ -166,11 +200,56 @@ class AdminAuthService
     }
 
     /**
+     * @return array<string,mixed>
+     */
+    private function authenticateInTransaction(string $username, string $password): array
+    {
+        return $this->db->transaction(function (ConnectionInterface $connection) use ($username, $password): array {
+            $user = $this->findUser($connection, $username);
+            $storedHash = $user['password_hash'] ?? null;
+            $hashValid = is_string($storedHash)
+                && password_get_info($storedHash)['algoName'] !== 'unknown';
+            $verificationHash = $hashValid ? $storedHash : self::DUMMY_PASSWORD_HASH;
+            $passwordValid = (bool) ($this->passwordVerifier)($password, $verificationHash);
+
+            if ($user === null || ! $hashValid || ! $passwordValid || (int) ($user['status'] ?? 0) !== 1) {
+                throw AdminAuthException::invalidCredentials();
+            }
+
+            $adminId = (int) $user['id'];
+            $updated = $connection->update(
+                'UPDATE admin_users SET last_login_at = NOW() WHERE id = ? AND status = 1',
+                [$adminId]
+            );
+            if ($updated === 1) {
+                return $user;
+            }
+
+            if ($updated !== 0) {
+                throw AdminAuthException::unavailable();
+            }
+
+            $rows = $connection->select(self::ENABLED_QUERY, [$adminId]);
+            $administrator = $rows[0] ?? null;
+            $administrator = is_object($administrator) ? get_object_vars($administrator) : $administrator;
+            if (
+                ! is_array($administrator)
+                || (int) ($administrator['id'] ?? 0) !== $adminId
+                || (int) ($administrator['status'] ?? 0) !== 1
+            ) {
+                throw AdminAuthException::invalidCredentials();
+            }
+
+            return $user;
+        });
+    }
+
+    /**
      * @return null|array<string,mixed>
      */
-    private function findUser(string $username): ?array
+    private function findUser(ConnectionInterface $connection, string $username): ?array
     {
-        $rows = $this->db->select(self::USER_QUERY, [$username]);
+        $rows = $connection->select(self::USER_QUERY, [$username]);
         $user = $rows[0] ?? null;
         if (is_object($user)) {
             return get_object_vars($user);
@@ -179,32 +258,26 @@ class AdminAuthService
         return is_array($user) ? $user : null;
     }
 
-    private function failureCount(string $key): int
+    private function reserveAttempt(string $key): void
     {
-        $value = $this->redis->get($key);
-        if ($value === false || $value === null) {
-            return 0;
+        $result = $this->redis->eval(
+            self::ATTEMPT_RESERVATION_SCRIPT,
+            [$key, $this->maxAttempts, $this->loginWindow],
+            1
+        );
+        if ($result === -1) {
+            throw AdminAuthException::rateLimited();
         }
 
-        if (is_int($value) && $value >= 0) {
-            return $value;
-        }
-
-        if (is_string($value) && ctype_digit($value)) {
-            return (int) $value;
-        }
-
-        throw AdminAuthException::unavailable();
-    }
-
-    private function recordFailure(string $key): void
-    {
-        $count = $this->redis->incr($key);
-        if (! is_int($count) || $count < 1) {
+        if (! is_int($result) || $result < 1 || $result > $this->maxAttempts) {
             throw AdminAuthException::unavailable();
         }
+    }
 
-        if ($count === 1 && $this->redis->expire($key, $this->loginWindow) !== true) {
+    private function releaseAttempt(string $key): void
+    {
+        $result = $this->redis->eval(self::ATTEMPT_RELEASE_SCRIPT, [$key], 1);
+        if (! is_int($result) || $result < 0) {
             throw AdminAuthException::unavailable();
         }
     }
@@ -247,6 +320,7 @@ class AdminAuthService
             && $session['issued_at'] <= $now
             && is_int($session['expires_at'])
             && $session['expires_at'] > $session['issued_at']
+            && $session['expires_at'] - $session['issued_at'] === $this->tokenTtl
             && $session['expires_at'] > $now
             && is_string($session['csrf_token'])
             && preg_match('/^[a-f0-9]{64}$/D', $session['csrf_token']) === 1;
