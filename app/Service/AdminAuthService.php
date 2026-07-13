@@ -31,18 +31,85 @@ local now = tonumber(now_parts[1]) + (tonumber(now_parts[2]) / 1000000)
 local maximum = tonumber(ARGV[2])
 local window = tonumber(ARGV[3])
 
+local failure_entries = redis.call("ZRANGE", KEYS[1], 0, -1, "WITHSCORES")
+local failure_deadline = nil
+if #failure_entries > 0 then
+    failure_deadline = tonumber(failure_entries[2])
+    for index = 1, #failure_entries, 2 do
+        redis.call("ZADD", KEYS[1], "XX", failure_deadline, failure_entries[index])
+    end
+end
+
 redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
-if redis.call("ZCARD", KEYS[1]) >= maximum then
-    redis.call("EXPIRE", KEYS[1], window)
+if failure_deadline ~= nil and failure_deadline > now then
+    redis.call("PEXPIREAT", KEYS[1], math.ceil(failure_deadline * 1000))
+end
+
+redis.call("ZREMRANGEBYSCORE", KEYS[2], "-inf", now)
+local latest_active = redis.call("ZRANGE", KEYS[2], -1, -1, "WITHSCORES")
+if #latest_active > 0 then
+    redis.call("PEXPIREAT", KEYS[2], math.ceil(tonumber(latest_active[2]) * 1000))
+end
+
+local current = redis.call("ZCARD", KEYS[1]) + redis.call("ZCARD", KEYS[2])
+if current >= maximum then
     return -1
 end
 
-local added = redis.call("ZADD", KEYS[1], "NX", now + window, ARGV[1])
+local added = redis.call("ZADD", KEYS[2], "NX", now + window, ARGV[1])
 if added ~= 1 then
     return -2
 end
 
-redis.call("EXPIRE", KEYS[1], window)
+redis.call("PEXPIREAT", KEYS[2], math.ceil((now + window) * 1000))
+return 1
+LUA;
+
+    private const ATTEMPT_FAILURE_SCRIPT = <<<'LUA'
+local now_parts = redis.call("TIME")
+local now = tonumber(now_parts[1]) + (tonumber(now_parts[2]) / 1000000)
+local window = tonumber(ARGV[3])
+
+local first_failure = redis.call("ZRANGE", KEYS[1], 0, -1, "WITHSCORES")
+local deadline
+if #first_failure == 0 then
+    deadline = now + window
+else
+    deadline = tonumber(first_failure[2])
+end
+
+if #first_failure > 0 then
+    for index = 1, #first_failure, 2 do
+        redis.call("ZADD", KEYS[1], "XX", deadline, first_failure[index])
+    end
+end
+
+redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
+redis.call("ZREMRANGEBYSCORE", KEYS[2], "-inf", now)
+if deadline <= now then
+    deadline = now + window
+end
+
+local existing = redis.call("ZSCORE", KEYS[1], ARGV[2])
+if existing then
+    deadline = tonumber(existing)
+    redis.call("ZREM", KEYS[2], ARGV[1])
+    redis.call("PEXPIREAT", KEYS[1], math.ceil(deadline * 1000))
+    return 1
+end
+
+local active = redis.call("ZSCORE", KEYS[2], ARGV[1])
+if not active then
+    return 0
+end
+
+redis.call("ZREM", KEYS[2], ARGV[1])
+local added = redis.call("ZADD", KEYS[1], "NX", deadline, ARGV[2])
+if added ~= 1 then
+    return -2
+end
+
+redis.call("PEXPIREAT", KEYS[1], math.ceil(deadline * 1000))
 return 1
 LUA;
 
@@ -87,14 +154,15 @@ LUA;
     public function login(string $username, string $password, string $clientIp): array
     {
         $failureKey = $this->failureKey($username, $clientIp);
+        $activeReservationKey = $this->activeReservationKey($failureKey);
         $reservationId = null;
 
         try {
             $reservationId = bin2hex(random_bytes(32));
-            $this->reserveAttempt($failureKey, $reservationId);
+            $this->reserveAttempt($failureKey, $activeReservationKey, $reservationId);
 
             $user = $this->authenticateInTransaction($username, $password);
-            $this->releaseAttempt($failureKey, $reservationId);
+            $this->releaseAttempt($activeReservationKey, $reservationId);
             $reservationId = null;
 
             $now = (int) ($this->clock)();
@@ -119,14 +187,26 @@ LUA;
                 'session' => $session,
             ];
         } catch (AdminAuthException $exception) {
-            if ($reservationId !== null && ! in_array($exception->status(), [401, 429], true)) {
-                $this->bestEffortRelease($failureKey, $reservationId);
+            if ($reservationId !== null && $exception->status() === 401) {
+                try {
+                    $this->finalizeFailure($failureKey, $activeReservationKey, $reservationId);
+                    $reservationId = null;
+                } catch (Throwable $throwable) {
+                    $this->bestEffortFinalizeFailure($failureKey, $activeReservationKey, $reservationId);
+                    if ($throwable instanceof AdminAuthException) {
+                        throw $throwable;
+                    }
+
+                    throw AdminAuthException::unavailable(previous: $throwable);
+                }
+            } elseif ($reservationId !== null && $exception->status() !== 429) {
+                $this->bestEffortRelease($activeReservationKey, $reservationId);
             }
 
             throw $exception;
         } catch (Throwable $throwable) {
             if ($reservationId !== null) {
-                $this->bestEffortRelease($failureKey, $reservationId);
+                $this->bestEffortRelease($activeReservationKey, $reservationId);
             }
 
             throw AdminAuthException::unavailable(previous: $throwable);
@@ -251,12 +331,18 @@ LUA;
         return is_array($user) ? $user : null;
     }
 
-    private function reserveAttempt(string $key, string $reservationId): void
+    private function reserveAttempt(string $failureKey, string $activeReservationKey, string $reservationId): void
     {
         $result = $this->redis->eval(
             self::ATTEMPT_RESERVATION_SCRIPT,
-            [$key, $reservationId, $this->maxAttempts, $this->loginWindow],
-            1
+            [
+                $failureKey,
+                $activeReservationKey,
+                'a:' . $reservationId,
+                $this->maxAttempts,
+                $this->loginWindow,
+            ],
+            2
         );
         if ($result === -1) {
             throw AdminAuthException::rateLimited();
@@ -267,18 +353,54 @@ LUA;
         }
     }
 
-    private function releaseAttempt(string $key, string $reservationId): void
+    private function finalizeFailure(
+        string $failureKey,
+        string $activeReservationKey,
+        string $reservationId
+    ): void {
+        $result = $this->redis->eval(
+            self::ATTEMPT_FAILURE_SCRIPT,
+            [
+                $failureKey,
+                $activeReservationKey,
+                'a:' . $reservationId,
+                'f:' . $reservationId,
+                $this->loginWindow,
+            ],
+            2
+        );
+        if ($result !== 1) {
+            throw AdminAuthException::unavailable();
+        }
+    }
+
+    private function releaseAttempt(string $activeReservationKey, string $reservationId): void
     {
-        $result = $this->redis->eval(self::ATTEMPT_RELEASE_SCRIPT, [$key, $reservationId], 1);
+        $result = $this->redis->eval(
+            self::ATTEMPT_RELEASE_SCRIPT,
+            [$activeReservationKey, 'a:' . $reservationId],
+            1
+        );
         if ($result !== 0 && $result !== 1) {
             throw AdminAuthException::unavailable();
         }
     }
 
-    private function bestEffortRelease(string $key, string $reservationId): void
+    private function bestEffortFinalizeFailure(
+        string $failureKey,
+        string $activeReservationKey,
+        string $reservationId
+    ): void {
+        try {
+            $this->finalizeFailure($failureKey, $activeReservationKey, $reservationId);
+        } catch (Throwable) {
+        }
+    }
+
+    private function bestEffortRelease(string $activeReservationKey, string $reservationId): void
     {
         try {
-            $this->releaseAttempt($key, $reservationId);
+            $this->releaseAttempt($activeReservationKey, $reservationId);
         } catch (Throwable) {
         }
     }
@@ -291,6 +413,11 @@ LUA;
     private function failureKey(string $username, string $clientIp): string
     {
         return self::FAILURE_PREFIX . hash('sha256', strtolower($username) . chr(0) . $clientIp);
+    }
+
+    private function activeReservationKey(string $failureKey): string
+    {
+        return $failureKey . ':active';
     }
 
     private function deleteSession(string $key): void
