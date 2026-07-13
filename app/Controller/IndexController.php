@@ -12,16 +12,17 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Http\AgentAdminResponseFactory;
+use Psr\Http\Message\ResponseInterface;
+
 class IndexController extends AbstractController
 {
-    public function index()
+    public function __construct(private AgentAdminResponseFactory $responses)
     {
-        $user = $this->request->input('user', 'Hyperf');
-        $method = $this->request->getMethod();
+    }
 
-        return [
-            'method' => $method,
-            'message' => "Hello  {$user}. Welcome to my hyperf apps!",
-        ];
+    public function index(): ResponseInterface
+    {
+        return $this->responses->redirect('/agent_admin/login');
     }
 }

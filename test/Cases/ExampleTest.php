@@ -20,8 +20,11 @@ use Hyperf\Testing\TestCase;
  */
 class ExampleTest extends TestCase
 {
-    public function testExample()
+    public function testRootRedirectsToAgentAdminLogin(): void
     {
-        $this->get('/')->assertOk()->assertSee('Hyperf');
+        $response = $this->get('/');
+
+        $response->assertStatus(302);
+        self::assertSame('/agent_admin/login', $response->getHeaderLine('Location'));
     }
 }

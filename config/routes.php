@@ -11,7 +11,15 @@ declare(strict_types=1);
  */
 use Hyperf\HttpServer\Router\Router;
 
-Router::addRoute(['GET', 'POST', 'HEAD'], '/', 'App\Controller\IndexController@index');
+Router::addRoute(['GET', 'HEAD'], '/', 'App\Controller\IndexController@index');
+Router::get('/agent_admin/login', 'App\Controller\AgentAdminAuthController@loginPage');
+Router::post('/agent_admin/login', 'App\Controller\AgentAdminAuthController@login');
+Router::get('/agent_admin', 'App\Controller\AgentAdminHomeController@index', [
+    'middleware' => [App\Middleware\AdminAuthMiddleware::class],
+]);
+Router::post('/agent_admin/logout', 'App\Controller\AgentAdminAuthController@logout', [
+    'middleware' => [App\Middleware\AdminAuthMiddleware::class],
+]);
 Router::get('/demo/concurrent', 'App\Controller\DemoConcurrentController@index');
 Router::post('/auth/login', 'App\Controller\AuthController@login');
 Router::post('/auth/logout', 'App\Controller\AuthController@logout');
