@@ -8,7 +8,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use JsonException;
 
-final class AdminAuditService
+class AdminAuditService
 {
     private const SENSITIVE_KEYS = [
         'password', 'password_confirmation', 'current_password', 'new_password',

@@ -5,9 +5,9 @@
 ## 1. 当前状态
 
 - 当前分支：`main`。
-- 当前阶段：M2 管理员与 RBAC 闭环 / 权限中间件。
-- 最近业务提交：`f7bf939 界面：增加后台管理模块入口`。
-- 最近完整验证：`composer test` 为 124 tests / 961 assertions；`composer analyse` 为 0 errors。
+- 当前阶段：M2 管理员与 RBAC 闭环 / 管理员 CRUD 服务。
+- 最近业务提交：`a3d4cba 功能：建立后台永久审计写入基线`。
+- 最近完整验证：`composer test` 为 131 tests / 980 assertions；`composer analyse` 为 0 errors。
 - 数据库状态：Schema 仅在单元测试中验证，未对运行中数据库执行变更。
 - 工作方式：Web 界面优先；完成步骤后更新本文档、中文提交并推送 `origin main`。
 
@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M2 第 4 步管理员服务切片：以已完成的永久审计追加接口为事务依赖，先为管理员列表、创建、启停、分配多角色和重置临时密码编写 RED；实现 `welkin` 服务端保护和会话撤销。
+执行 M2 第 4 步角色服务切片：先为角色列表、创建、编辑、启停和批量绑定权限编写 RED；写操作与 `AdminAuditService::append()` 共享事务。
 
 ## 6. 本轮证据
 
@@ -161,4 +161,9 @@
 - M2.4 审计基线 RED/GREEN：`AdminAuditService` 缺失后实现只追加数据库写入；接口不提供更新或删除，递归过滤密码、CSRF、Cookie、Authorization、Token、Secret 与签名字段。
 - M2.4 审计基线文件：`app/Service/AdminAuditService.php`、`test/Cases/AdminAuditServiceTest.php`。
 - M2.4 审计基线验证：定向 1 test / 8 assertions；完整回归 125 tests / 969 assertions；PHPStan 0 errors。
-- 下一断点：M2 第 4 步管理员 CRUD 服务 RED，所有写操作调用 `AdminAuditService::append()` 共享事务。
+- M2.4 管理员服务：列表不读取密码摘要；创建返回一次性临时密码；禁用、角色分配、密码重置均在事务内审计。
+- M2.4 管理员安全：`welkin`/超级管理员不可禁用或分配普通角色；普通管理员禁用与重置密码后撤销全部 Redis 会话；关联表使用软撤销及恢复。
+- M2.4 管理员文件：`app/Service/AdminUserManagementService.php`、`test/Cases/AdminUserManagementServiceTest.php`；`AdminAuditService` 调整为可替换依赖以便验证事务协作。
+- M2.4 管理员验证：定向 6 tests / 11 assertions；完整回归 131 tests / 980 assertions；PHPStan 0 errors。
+- M2.4 风险：管理员 HTTP 表单与 CSRF 尚未接入，将在角色/权限/菜单服务完成后统一连接现有 Web 页面。
+- 下一断点：M2 第 4 步角色 CRUD 与批量权限绑定服务 RED。
