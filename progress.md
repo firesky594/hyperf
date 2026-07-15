@@ -163,8 +163,8 @@
 ### 3.1 当前精确断点
 
 - 当前阶段：阶段 2 / 任务 3 RBAC、路由元数据与权限同步。
-- 最后完成：任务 2 超管初始化、幂等修复、首次改密、会话撤销、路由门禁和终端改密页，完整回归通过。
-- 下一步：提交任务 2，然后为后台路由权限编码唯一性和方法/路径绑定编写 RouteRegistry RED。
+- 最后完成：任务 2 已提交为 `6c7bd9c`；任务 3 路由注册表 RED/GREEN 完成，27 条路由定义通过 159 个断言，PHPStan 0 errors。
+- 下一步：提交路由注册表子功能，然后为系统权限新增、停用、恢复且不修改自定义权限编写同步服务 RED。
 - 当前未修改运行中数据库或服务；Schema 仅通过 Mockery 单元测试验证，尚未对线上数据库执行。
 
 ### 3.2 本轮更新证据
@@ -266,6 +266,12 @@
 4. [ ] 逐项看见 RED 后实现 Registry、同步命令、权限服务和中间件。
 5. [ ] 运行 RBAC 定向测试和认证回归。
 6. [ ] 更新进度并提交 `feat: add administrator rbac enforcement`。
+
+**进行中证据：**
+
+- RouteRegistry RED：`Class "App\Rbac\AdminRouteRegistry" not found`。
+- RouteRegistry GREEN：1 test / 159 assertions；PHPStan 0 errors。
+- 当前未完成：权限同步服务和命令、权限解析、多角色关联及 403 中间件。
 
 ### 任务 4：数据库全量审计
 
