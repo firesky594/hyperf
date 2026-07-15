@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M2 第 4 步第一个切片：先为管理员列表、创建、启停、分配多角色和重置临时密码编写服务 RED；实现事务写入、`welkin` 服务端保护、会话撤销与审计接口契约。
+执行 M2 第 4 步管理员服务切片：以已完成的永久审计追加接口为事务依赖，先为管理员列表、创建、启停、分配多角色和重置临时密码编写 RED；实现 `welkin` 服务端保护和会话撤销。
 
 ## 6. 本轮证据
 
@@ -158,4 +158,7 @@
 - M2.3 文件：`app/Service/AdminAuthorizationService.php`、`app/Middleware/AdminPermissionMiddleware.php`、`config/routes.php`、403 页面与对应测试。
 - M2.3 验证：定向 6 tests / 20 assertions；管理页面 HTTP 40 assertions；完整回归 124 tests / 961 assertions；PHPStan 0 errors。
 - M2.3 风险：普通管理员 HTTP 集成尚需在角色 CRUD 接通真实数据库后验收；当前服务单测已覆盖允许/拒绝和停用查询条件。
-- 下一断点：M2 第 4 步管理员 CRUD 服务 RED。
+- M2.4 审计基线 RED/GREEN：`AdminAuditService` 缺失后实现只追加数据库写入；接口不提供更新或删除，递归过滤密码、CSRF、Cookie、Authorization、Token、Secret 与签名字段。
+- M2.4 审计基线文件：`app/Service/AdminAuditService.php`、`test/Cases/AdminAuditServiceTest.php`。
+- M2.4 审计基线验证：定向 1 test / 8 assertions；完整回归 125 tests / 969 assertions；PHPStan 0 errors。
+- 下一断点：M2 第 4 步管理员 CRUD 服务 RED，所有写操作调用 `AdminAuditService::append()` 共享事务。
