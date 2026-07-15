@@ -126,17 +126,17 @@ HTML;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <title>运行控制台 · Agent Admin</title>
+    <title>系统总览 · UniAPI</title>
     <style>{$styles}</style>
 </head>
 <body class="console-page">
     <a class="skip-link" href="#main-content">跳到主要内容</a>
     <header class="console-header">
-        <a class="brand" href="/agent_admin" aria-label="Agent Admin 首页">
-            <span class="brand-mark" aria-hidden="true">AA</span>
+        <a class="brand" href="/agent_admin" aria-label="UniAPI 管理后台首页">
+            <span class="brand-mark" aria-hidden="true">U//</span>
             <span>
-                <strong>Agent Admin</strong>
-                <small>OPERATIONS CONSOLE</small>
+                <strong>UniAPI</strong>
+                <small>统一接口平台 / Agent Admin</small>
             </span>
         </a>
         <div class="console-actions">
@@ -154,7 +154,7 @@ HTML;
     <div class="console-layout">
         <aside class="console-rail">
             <p class="rail-label">NAV / 01</p>
-            <nav aria-label="控制台导航">
+            <nav aria-label="平台功能导航">
                 <a class="nav-item" href="/agent_admin" aria-current="page">
                     <span aria-hidden="true">01</span>
                     <span>总览</span>
@@ -171,9 +171,9 @@ HTML;
         <main id="main-content" class="console-main" tabindex="-1">
             <section class="overview-head" aria-labelledby="overview-heading">
                 <div>
-                    <p class="eyebrow">SYSTEM OVERVIEW / LIVE</p>
-                    <h1 id="overview-heading">运行控制台</h1>
-                    <p class="lede">第一视图聚焦管理员会话、框架基线与当前访问边界。</p>
+                    <p class="eyebrow">UNIAPI / CONTROL PLANE / 01</p>
+                    <h1 id="overview-heading">统一接口平台</h1>
+                    <p class="lede">面向 API 供应商与采购方的发布、交易、调用计量和月度结算控制面。</p>
                 </div>
                 <div class="operator-chip" aria-label="当前管理员">
                     <span>当前管理员</span>
@@ -182,7 +182,7 @@ HTML;
                 </div>
             </section>
 
-            <section class="metrics-grid" aria-label="系统概况">
+            <section class="metrics-grid platform-grid" aria-label="平台系统概况">
                 <article class="metric-card session-card">
                     <div class="card-head">
                         <span class="card-code">SESSION / 01</span>
@@ -202,41 +202,81 @@ HTML;
                     <p class="timezone-note">时间基准 / Asia/Shanghai</p>
                 </article>
 
-                <article class="metric-card runtime-card">
+                <article class="metric-card runtime-card platform-card">
                     <div class="card-head">
-                        <span class="card-code">RUNTIME / 02</span>
-                        <span class="status-label">稳定基线</span>
+                        <span class="card-code">MARKET / 02</span>
+                        <span class="status-label status-pending">规划中</span>
                     </div>
-                    <p class="metric-value">Hyperf 3.1</p>
-                    <h2>应用框架</h2>
-                    <p>协程服务运行基线。此页面只呈现已确认的框架主版本，不推断实时基础设施指标。</p>
+                    <p class="metric-value">API 市场</p>
+                    <h2>商品与版本</h2>
+                    <p>供应商发布接口、版本、文档和按量价格。尚未接入实时数据。</p>
                 </article>
 
-                <article class="metric-card access-card">
+                <article class="metric-card access-card platform-card">
                     <div class="card-head">
-                        <span class="card-code">ACCESS / 03</span>
-                        <span class="status-label status-limited">限定</span>
+                        <span class="card-code">BUYER / 03</span>
+                        <span class="status-label status-pending">规划中</span>
                     </div>
-                    <p class="metric-value">独立管理员门禁</p>
-                    <h2>访问模型</h2>
-                    <p>当前验证已配置的独立管理员身份；所有管理员使用统一权限层级，尚未提供角色分层或 RBAC 权限模型。</p>
+                    <p class="metric-value">采购方应用</p>
+                    <h2>密钥与订阅</h2>
+                    <p>创建应用、开通 API、查看供应商额度。尚未接入实时数据。</p>
+                </article>
+
+                <article class="metric-card platform-card">
+                    <div class="card-head">
+                        <span class="card-code">SUPPLIER / 04</span>
+                        <span class="status-label status-pending">规划中</span>
+                    </div>
+                    <p class="metric-value">供应商工作台</p>
+                    <h2>接口与额度策略</h2>
+                    <p>管理商品、采购方 QPS 与周期额度。尚未接入实时数据。</p>
+                </article>
+
+                <article class="metric-card platform-card">
+                    <div class="card-head">
+                        <span class="card-code">METERING / 05</span>
+                        <span class="status-label status-pending">规划中</span>
+                    </div>
+                    <p class="metric-value">调用与计量</p>
+                    <h2>统一网关</h2>
+                    <p>鉴权、限流、代理与幂等计量。尚未接入实时数据。</p>
+                </article>
+
+                <article class="metric-card platform-card">
+                    <div class="card-head">
+                        <span class="card-code">BILLING / 06</span>
+                        <span class="status-label status-pending">规划中</span>
+                    </div>
+                    <p class="metric-value">账单与结算</p>
+                    <h2>月结控制</h2>
+                    <p>后付费账单、宽限期、佣金与付款确认。尚未接入实时数据。</p>
+                </article>
+
+                <article class="metric-card platform-card">
+                    <div class="card-head">
+                        <span class="card-code">CLUSTER / 07</span>
+                        <span class="status-label status-pending">规划中</span>
+                    </div>
+                    <p class="metric-value">分布式节点</p>
+                    <h2>运行角色</h2>
+                    <p>Gateway、Metering、Billing 与 Notification。尚未接入实时数据。</p>
                 </article>
             </section>
 
             <section class="boundary-panel" aria-labelledby="boundary-heading">
                 <div>
-                    <p class="eyebrow">SECURITY BOUNDARY</p>
-                    <h2 id="boundary-heading">权限边界说明</h2>
+                    <p class="eyebrow">SECURITY / VERIFIED BASELINE</p>
+                    <h2 id="boundary-heading">当前可用能力</h2>
                 </div>
-                <p>登录成功代表通过管理员访问门禁；当前管理员不区分角色，尚未提供团队、租户或细粒度授权能力。</p>
-                <span class="boundary-tag">NO ROLE CLAIMS</span>
+                <p>Hyperf 3.1 与独立管理员门禁已启用；当前仍是统一权限层级，RBAC 路由权限正在建设，业务指标不会在接入前伪造。</p>
+                <span class="boundary-tag">BASELINE ONLY</span>
             </section>
         </main>
     </div>
 
     <footer class="site-footer console-footer">
-        <span>AGENT ADMIN / INTERNAL</span>
-        <span>SESSION-BOUND ACCESS</span>
+        <span>UNIAPI / INTERNAL CONTROL PLANE</span>
+        <span>MARKET · GATEWAY · METERING · BILLING</span>
     </footer>
 </body>
 </html>

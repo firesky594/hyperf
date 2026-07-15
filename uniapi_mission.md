@@ -5,7 +5,7 @@
 ## 1. 当前状态
 
 - 当前分支：`main`。
-- 当前阶段：M0 文档入口迁移与 UniAPI 基线固化。
+- 当前阶段：M1 UniAPI Web 系统总览。
 - 最近业务提交：`ec60ffe feat: define administrator route permissions`。
 - 最近完整验证：`composer test` 为 112 tests / 679 assertions；`composer analyse` 为 0 errors。
 - 数据库状态：Schema 仅在单元测试中验证，未对运行中数据库执行变更。
@@ -28,7 +28,7 @@
 2. [x] 用根目录 `uniapi.md` 替代旧 `progress.md`，写入框架、目录、流程图、Redis 和交付规范。
 3. [x] 建立根目录 `uniapi_mission.md`，保留管理员/RBAC 已完成证据。
 4. [x] 自检两份文档、确认旧入口已删除；`git diff --check` 无输出。
-5. [ ] 更新本记录，中文提交并推送 `origin main`。
+5. [ ] 已用中文提交 `de09300`；推送因当前环境未配置 GitHub HTTPS 凭据而阻塞，待认证后补推 `origin main`。
 
 ### M1：UniAPI Web 系统总览
 
@@ -44,10 +44,10 @@
 
 **步骤：**
 
-1. [ ] 写系统总览布局、关键文案、键盘焦点和移动端行为测试。
-2. [ ] 运行定向测试并记录预期 RED。
-3. [ ] 实现最小终端风格总览，不伪造后台数据。
-4. [ ] 运行定向测试、`composer test`、`composer analyse`。
+1. [x] 写系统总览布局、关键文案、键盘焦点和移动端行为测试。
+2. [x] 容器运行定向测试并得到预期 RED：缺少 UniAPI 页面标题，1 test / 1 failure。
+3. [x] 实现最小终端风格总览，未接通模块明确显示“尚未接入实时数据”。
+4. [x] 渲染器 9 tests / 84 assertions；完整回归 114 tests / 853 assertions；PHPStan 0 errors。
 5. [ ] 更新任务证据，中文提交并推送 `origin main`。
 
 ### M2：管理员与 RBAC 闭环
@@ -100,7 +100,7 @@
 
 ## 5. 当前唯一任务
 
-完成 M0 第 5 步：选择性暂存 `progress.md`、`uniapi.md`、`uniapi_mission.md`，使用中文提交信息并推送 `origin main`；随后进入 M1 第 1 步，优先编写系统总览页面 RED 测试。
+完成 M1 第 5 步：选择性暂存页面、测试和本文档，中文提交后重试推送 `origin main`。远端认证恢复后必须同时推送尚未远端同步的 `de09300`。
 
 ## 6. 本轮证据
 
@@ -109,5 +109,11 @@
 - 已确认：优先修改 Web 界面，以真实显示便于人工指导。
 - 文档自检：`rg -n "progress\\.md|docs/|TBD|TODO|待确认" uniapi.md uniapi_mission.md` 仅命中迁移和禁用旧入口的刻意说明；无占位项。
 - 格式自检：`git diff --check` 无输出；旧 `progress.md` 已进入删除状态。
-- 待记录：提交哈希、`origin main` 推送结果。
-- 下一断点：M0 第 5 步提交并推送。
+- M0 提交：`de09300 文档：建立统一接口平台规范与任务入口`。
+- M0 推送：失败，`gh auth status` 显示未登录，HTTPS remote 无法读取 GitHub 用户名；本地提交保持完整。
+- M1 RED：容器定向测试 1 test / 1 failure，失败点为旧页面缺少 UniAPI 标题。
+- M1 GREEN：`AgentAdminPageRendererTest` 为 9 tests / 84 assertions。
+- M1 回归：容器 `composer test` 为 114 tests / 853 assertions；`composer analyse` 为 0 errors。
+- M1 文件：`app/View/AgentAdminPageRenderer.php`、`test/Cases/AgentAdminPageRendererTest.php`、`test/Cases/AgentAdminControllerTest.php`。
+- 风险：GitHub 凭据缺失，两个本地中文提交需要在认证恢复后推送。
+- 下一断点：M1 第 5 步中文提交并重试推送；随后进入 M2 权限同步服务 RED。

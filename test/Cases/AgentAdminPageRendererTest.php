@@ -106,6 +106,33 @@ class AgentAdminPageRendererTest extends TestCase
         self::assertStringNotContainsString('<root>', $html);
     }
 
+    public function testHomePresentsUniApiMarketplaceControlPlaneWithoutInventingLiveMetrics(): void
+    {
+        $html = (new AgentAdminPageRenderer())->home([
+            'admin_id' => '594',
+            'username' => 'welkin',
+            'issued_at' => 1783918800,
+            'expires_at' => 1783926000,
+            'csrf_token' => 'logout-token',
+        ]);
+
+        self::assertStringContainsString('<title>系统总览 · UniAPI</title>', $html);
+        self::assertStringContainsString('统一接口平台', $html);
+        self::assertStringContainsString('API 市场', $html);
+        self::assertStringContainsString('采购方应用', $html);
+        self::assertStringContainsString('供应商工作台', $html);
+        self::assertStringContainsString('调用与计量', $html);
+        self::assertStringContainsString('账单与结算', $html);
+        self::assertStringContainsString('分布式节点', $html);
+        self::assertStringContainsString('尚未接入实时数据', $html);
+        self::assertStringContainsString('aria-label="平台功能导航"', $html);
+        self::assertStringContainsString('aria-current="page"', $html);
+        self::assertStringContainsString('@media (max-width: 640px)', $html);
+        self::assertStringContainsString('@media (prefers-reduced-motion: reduce)', $html);
+        self::assertStringNotContainsString('1,280,391', $html);
+        self::assertSame(1, substr_count($html, '<h1'));
+    }
+
     public function testUnavailablePageEscapesItsMessage(): void
     {
         $html = (new AgentAdminPageRenderer())->unavailable('稍后 <script>alert(1)</script>');

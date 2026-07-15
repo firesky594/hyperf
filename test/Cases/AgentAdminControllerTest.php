@@ -370,7 +370,7 @@ class AgentAdminControllerTest extends TestCase
         ]);
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('运行控制台', (string) $response->getBody());
+        self::assertStringContainsString('统一接口平台', (string) $response->getBody());
         self::assertStringContainsString($session['username'], (string) $response->getBody());
         self::assertStringContainsString('name="_csrf" value="' . $session['csrf_token'] . '"', (string) $response->getBody());
         $this->assertSecurityHeaders($response);
