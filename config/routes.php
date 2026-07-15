@@ -11,13 +11,14 @@ declare(strict_types=1);
  */
 use App\Middleware\AdminAuthMiddleware;
 use App\Middleware\AdminPasswordChangeMiddleware;
+use App\Middleware\AdminPermissionMiddleware;
 use Hyperf\HttpServer\Router\Router;
 
 Router::addRoute(['GET', 'HEAD'], '/', 'App\Controller\IndexController@index');
 Router::get('/agent_admin/login', 'App\Controller\AgentAdminAuthController@loginPage');
 Router::post('/agent_admin/login', 'App\Controller\AgentAdminAuthController@login');
 Router::get('/agent_admin', 'App\Controller\AgentAdminHomeController@index', [
-    'middleware' => [AdminAuthMiddleware::class, AdminPasswordChangeMiddleware::class],
+    'middleware' => [AdminAuthMiddleware::class, AdminPasswordChangeMiddleware::class, AdminPermissionMiddleware::class],
 ]);
 foreach ([
     '/agent_admin/administrators' => 'administrators',
@@ -27,7 +28,7 @@ foreach ([
     '/agent_admin/audit' => 'audit',
 ] as $path => $action) {
     Router::get($path, 'App\Controller\AgentAdminManagementController@' . $action, [
-        'middleware' => [AdminAuthMiddleware::class, AdminPasswordChangeMiddleware::class],
+        'middleware' => [AdminAuthMiddleware::class, AdminPasswordChangeMiddleware::class, AdminPermissionMiddleware::class],
     ]);
 }
 Router::get('/agent_admin/password', 'App\Controller\AgentAdminPasswordController@page', [

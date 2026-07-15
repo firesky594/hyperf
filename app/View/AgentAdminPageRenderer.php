@@ -405,6 +405,7 @@ HTML;
         $message = $this->escape($message);
         $styles = $this->styles();
         [$title, $eyebrow, $heading, $footer] = match ($status) {
+            403 => ['权限不足', 'ACCESS DENIED', '权限不足', 'PERMISSION REQUIRED'],
             419 => ['请求验证失败', 'REQUEST REJECTED', '请求验证失败', 'RELOAD AND RETRY'],
             default => ['服务暂不可用', 'SERVICE INTERRUPTED', '后台服务暂不可用', 'RETRY LATER'],
         };

@@ -5,9 +5,9 @@
 ## 1. 当前状态
 
 - 当前分支：`main`。
-- 当前阶段：M2 管理员与 RBAC 闭环 / Web 管理入口。
-- 最近业务提交：`60a9783 功能：实现后台路由权限同步`。
-- 最近完整验证：`composer test` 为 118 tests / 941 assertions；`composer analyse` 为 0 errors。
+- 当前阶段：M2 管理员与 RBAC 闭环 / 权限中间件。
+- 最近业务提交：`f7bf939 界面：增加后台管理模块入口`。
+- 最近完整验证：`composer test` 为 124 tests / 961 assertions；`composer analyse` 为 0 errors。
 - 数据库状态：Schema 仅在单元测试中验证，未对运行中数据库执行变更。
 - 工作方式：Web 界面优先；完成步骤后更新本文档、中文提交并推送 `origin main`。
 
@@ -56,7 +56,7 @@
 
 1. [x] 权限同步服务与命令：新增、恢复、停用系统权限，不覆盖自定义权限。
 2. [x] Web 先行：管理员、角色、权限、菜单、审计导航与真实空状态页面。
-3. [ ] 多角色权限并集、角色/权限停用即时失效、超管服务端直通及权限中间件。
+3. [x] 多角色权限并集、角色/权限停用即时失效、超管服务端直通及权限中间件。
 4. [ ] 管理员、角色、权限、菜单 CRUD；所有写操作 POST + CSRF + 事务审计。
 5. [ ] 永久数据库全量审计、敏感字段过滤、只读检索页面和查询审计失败关闭。
 6. [ ] 完整测试、静态分析、更新记录、中文提交并推送。
@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M2 第 3 步：先为超管直通、普通管理员多角色权限并集、停用即时失效编写服务 RED；再实现权限解析服务和路由权限中间件。
+执行 M2 第 4 步第一个切片：先为管理员列表、创建、启停、分配多角色和重置临时密码编写服务 RED；实现事务写入、`welkin` 服务端保护、会话撤销与审计接口契约。
 
 ## 6. 本轮证据
 
@@ -152,4 +152,10 @@
 - M2.2 文件：`app/View/AgentAdminPageRenderer.php`、`app/Controller/AgentAdminManagementController.php`、`config/routes.php`、渲染与 HTTP 测试。
 - M2.2 验证：渲染器 10 tests / 119 assertions；五路由 HTTP 1 test / 40 assertions；完整回归 118 tests / 941 assertions；PHPStan 0 errors。
 - M2.2 风险：页面尚未连接数据库，已明确显示真实空状态；权限中间件将在 M2.3 接入。
-- 下一断点：M2 第 3 步权限解析服务与中间件 RED。
+- M2.3 RED：权限服务与中间件测试分别失败于对应类不存在。
+- M2.3 GREEN：普通管理员权限每次通过管理员—多角色—权限关联实时查询；管理员、角色、权限停用或软删除立即失效；超管服务端直通。
+- M2.3 安全边界：受保护路由从注册表取得权限编码，无授权返回安全 403，缺少路由元数据时失败关闭。
+- M2.3 文件：`app/Service/AdminAuthorizationService.php`、`app/Middleware/AdminPermissionMiddleware.php`、`config/routes.php`、403 页面与对应测试。
+- M2.3 验证：定向 6 tests / 20 assertions；管理页面 HTTP 40 assertions；完整回归 124 tests / 961 assertions；PHPStan 0 errors。
+- M2.3 风险：普通管理员 HTTP 集成尚需在角色 CRUD 接通真实数据库后验收；当前服务单测已覆盖允许/拒绝和停用查询条件。
+- 下一断点：M2 第 4 步管理员 CRUD 服务 RED。
