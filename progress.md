@@ -127,7 +127,7 @@
 
 ### 阶段 2：认证基线与 RBAC 核心
 
-**状态：未开始**
+**状态：进行中**
 
 **前置条件：** 阶段 1 在 `progress.md` 中的完整设计和详细实施任务已完成并提交。
 
@@ -162,10 +162,10 @@
 
 ### 3.1 当前精确断点
 
-- 当前阶段：阶段 2 / 任务 1 数据库结构基线。
-- 最后完成：七个测试驱动实施任务已追加并通过任务覆盖、接口一致性、占位符及 `git diff --check` 自检。
-- 下一步：提交详细实施任务，然后新增 `AdminSchemaServiceTest.php` 并运行第一个 RED。
-- 当前未修改任何业务代码、数据库或运行中服务。
+- 当前阶段：阶段 2 / 任务 2 超管初始化与首次改密。
+- 最后完成：任务 1 数据库结构基线实现及完整回归通过。
+- 下一步：提交任务 1，然后为 `welkin` 幂等初始化和随机临时密码编写第一个 RED。
+- 当前未修改运行中数据库或服务；Schema 仅通过 Mockery 单元测试验证，尚未对线上数据库执行。
 
 ### 3.2 本轮更新证据
 
@@ -210,21 +210,21 @@
 
 ### 任务 1：数据库结构基线
 
-**状态：待执行**
+**状态：已完成**
 
 **文件：** 新建 `app/Service/AdminSchemaService.php`、`app/Command/AdminSchemaCommand.php`、`test/Cases/AdminSchemaServiceTest.php`；修改 `AdminUserProvisioner.php` 依赖统一 Schema 服务。
 
 **接口：** `AdminSchemaService::ensureSchema(): void`；命令 `admin:schema`。
 
-1. [ ] 测试七张后台表、必要索引和所有表的 `created_at/updated_at/deleted_at`。
-2. [ ] 运行定向 PHPUnit，记录因类不存在产生的 RED。
-3. [ ] 实现幂等 DDL，升级 `admin_users` 并新增其余六张表。
-4. [ ] 运行定向测试及 `AdminUserProvisionerTest`，记录 GREEN。
-5. [ ] 更新进度并提交 `feat: add administrator schema baseline`。
+1. [x] 测试七张后台表、必要索引和所有表的 `created_at/updated_at/deleted_at`。
+2. [x] Docker 运行定向 PHPUnit，正确 RED：`Class "App\Service\AdminSchemaService" not found`。
+3. [x] 实现幂等 DDL，升级 `admin_users` 并新增其余六张表。
+4. [x] 定向 GREEN：5 tests / 41 assertions；完整回归：100 tests / 647 assertions；PHPStan 0 errors。
+5. [x] 已更新进度，待提交 `feat: add administrator schema baseline`。
 
 ### 任务 2：超管初始化与首次改密
 
-**状态：待执行**
+**状态：进行中**
 
 **文件：** 修改 Provisioner、SetupCommand、AuthService、AuthMiddleware 和路由；新建 `AdminPasswordService.php`、`AdminPasswordChangeMiddleware.php`、`AgentAdminPasswordController.php` 及测试。
 

@@ -24,6 +24,7 @@ class AdminUserProvisioner
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $idGenerator,
+        private AdminSchemaService $schema,
         ?callable $passwordHasher = null
     ) {
         $this->passwordHasher = $passwordHasher
@@ -37,7 +38,7 @@ class AdminUserProvisioner
     {
         try {
             $this->validate($username, $password);
-            $this->createTable();
+            $this->schema->ensureSchema();
 
             $rows = $this->db->select(
                 'SELECT id FROM admin_users WHERE username = ? LIMIT 1',
@@ -85,21 +86,4 @@ class AdminUserProvisioner
         }
     }
 
-    private function createTable(): void
-    {
-        $this->db->statement(<<<'SQL'
-CREATE TABLE IF NOT EXISTS `admin_users` (
-  `id` BIGINT UNSIGNED NOT NULL,
-  `username` VARCHAR(64) NOT NULL,
-  `password_hash` VARCHAR(255) NOT NULL,
-  `status` TINYINT UNSIGNED NOT NULL DEFAULT 1,
-  `last_login_at` TIMESTAMP NULL DEFAULT NULL,
-  `created_at` TIMESTAMP NULL DEFAULT NULL,
-  `updated_at` TIMESTAMP NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_admin_users_username` (`username`),
-  KEY `idx_admin_users_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL);
-    }
 }
