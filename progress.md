@@ -163,8 +163,8 @@
 ### 3.1 当前精确断点
 
 - 当前阶段：阶段 2 / 任务 2 超管初始化与首次改密。
-- 最后完成：任务 1 数据库结构基线实现及完整回归通过。
-- 下一步：提交任务 1，然后为 `welkin` 幂等初始化和随机临时密码编写第一个 RED。
+- 最后完成：任务 2 的超管创建与 `admin:setup` 命令子循环通过；命令固定初始化 `welkin`，生成并仅输出一次临时密码。
+- 下一步：为已存在 `welkin` 的重置/修复幂等行为新增 RED，再完成首次改密服务与门禁。
 - 当前未修改运行中数据库或服务；Schema 仅通过 Mockery 单元测试验证，尚未对线上数据库执行。
 
 ### 3.2 本轮更新证据
@@ -236,6 +236,15 @@
 4. [ ] 实现改密服务、中间件、控制器和终端风格页面。
 5. [ ] 运行新增测试及现有管理员认证回归。
 6. [ ] 更新进度并提交 `feat: require administrator password rotation`。
+
+**进行中证据：**
+
+- RED 1：`Call to undefined method AdminUserProvisioner::provisionSuperAdmin()`。
+- GREEN 1：超管创建服务测试通过。
+- RED 2：旧命令报 `Not enough arguments (missing: "username")`。
+- GREEN 2：`AdminSetupCommandTest` 与 Provisioner 测试共 6 tests / 11 assertions。
+- 当前完整回归：102 tests / 652 assertions；PHPStan 0 errors。
+- 当前尚未完成：已存在 `welkin` 修复测试、首次改密服务、路由门禁、页面和会话撤销。
 
 ### 任务 3：RBAC、路由元数据与权限同步
 

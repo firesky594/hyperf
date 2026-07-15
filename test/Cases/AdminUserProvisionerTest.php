@@ -53,6 +53,39 @@ class AdminUserProvisionerTest extends TestCase
         );
     }
 
+    public function testProvisionSuperAdminCreatesWelkinWithOneTimeTemporaryPassword(): void
+    {
+        $db = Mockery::mock(Db::class);
+        $ids = Mockery::mock(IdGeneratorInterface::class);
+        $schema = Mockery::mock(AdminSchemaService::class);
+        $schema->shouldReceive('ensureSchema')->once();
+        $db->shouldReceive('select')->once()
+            ->with('SELECT id FROM admin_users WHERE username = ? LIMIT 1', ['welkin'])
+            ->andReturn([]);
+        $ids->shouldReceive('generate')->once()->andReturn(9100);
+        $db->shouldReceive('insert')->once()->withArgs(
+            static fn (string $sql, array $bindings): bool => str_contains($sql, 'INSERT INTO admin_users')
+                && str_contains($sql, 'is_super_admin')
+                && str_contains($sql, 'must_change_password')
+                && $bindings === [9100, 'welkin', 'hashed:Temp-Password-2026!']
+        )->andReturn(true);
+
+        $service = new AdminUserProvisioner(
+            $db,
+            $ids,
+            $schema,
+            static fn (string $value): string => 'hashed:' . $value,
+            static fn (): string => 'Temp-Password-2026!'
+        );
+
+        self::assertSame([
+            'id' => 9100,
+            'username' => 'welkin',
+            'created' => true,
+            'temporary_password' => 'Temp-Password-2026!',
+        ], $service->provisionSuperAdmin());
+    }
+
     public function testDefaultHasherUsesPasswordBytesAfterBcryptLimit(): void
     {
         $db = Mockery::mock(Db::class);

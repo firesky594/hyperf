@@ -18,7 +18,7 @@ use Hyperf\Command\Command;
 
 class AdminSetupCommand extends Command
 {
-    protected ?string $signature = 'admin:setup {username : Administrator username}';
+    protected ?string $signature = 'admin:setup';
 
     protected string $description = 'Create or reset an administrator account.';
 
@@ -29,29 +29,21 @@ class AdminSetupCommand extends Command
 
     public function handle(): int
     {
-        $username = (string) $this->argument('username');
-        $password = (string) $this->secret('Administrator password');
-        $confirmation = (string) $this->secret('Confirm administrator password');
-
-        if (! hash_equals($password, $confirmation)) {
-            $this->error('Passwords do not match.');
-
-            return self::FAILURE;
-        }
-
         try {
-            $result = $this->provisioner->provision($username, $password);
+            $result = $this->provisioner->provisionSuperAdmin('welkin');
         } catch (AdminAuthException $exception) {
             $this->error($exception->publicMessage());
 
             return self::FAILURE;
         }
 
-        $this->line(sprintf(
-            '%s %s',
+        $this->info(sprintf(
+            'Administrator %s %s.',
             $result['username'],
             $result['created'] ? 'created' : 'reset'
         ));
+        $this->line('Temporary password: ' . $result['temporary_password']);
+        $this->warn('Sign in and change this password immediately. It will not be shown again.');
 
         return self::SUCCESS;
     }
