@@ -54,7 +54,7 @@
 
 **状态：未开始**
 
-1. [ ] 权限同步服务与命令：新增、恢复、停用系统权限，不覆盖自定义权限。
+1. [x] 权限同步服务与命令：新增、恢复、停用系统权限，不覆盖自定义权限。
 2. [ ] Web 先行：管理员、角色、权限、菜单、审计导航与真实空状态页面。
 3. [ ] 多角色权限并集、角色/权限停用即时失效、超管服务端直通及权限中间件。
 4. [ ] 管理员、角色、权限、菜单 CRUD；所有写操作 POST + CSRF + 事务审计。
@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M2 第 1 步：先为 `AdminPermissionService::syncSystemPermissions()` 编写新增、恢复、停用且不覆盖自定义权限的失败测试；观察正确 RED 后实现服务和命令。
+执行 M2 第 2 步：先为管理员、角色、权限、菜单、审计导航和真实空状态页面编写失败测试；观察正确 RED 后注册受保护 GET 路由并实现终端风格页面。
 
 ## 6. 本轮证据
 
@@ -142,4 +142,9 @@
 - M1 推送：第二次尝试仍失败，错误为无法读取 GitHub HTTPS 用户名。
 - Git 恢复：2026-07-15 执行 `git push origin main` 返回 `Everything up-to-date`，此前提交已同步。
 - 总体执行：用户要求持续推进至 M7；每个阶段必须按上方编号留下验证、提交、推送和唯一断点。
-- 下一断点：M2 第 1 步权限同步服务 RED。
+- M2.1 RED：`AdminPermissionService` 不存在；命令测试在调整服务可测试性后正确失败于 `AdminPermissionSyncCommand` 不存在。
+- M2.1 GREEN：新增 `AdminPermissionService`，事务内新增/恢复/停用系统权限并跳过同码自定义权限；新增 `admin:permissions:sync` 命令。
+- M2.1 文件：`app/Service/AdminPermissionService.php`、`app/Command/AdminPermissionSyncCommand.php`、`config/autoload/commands.php`、两个对应测试。
+- M2.1 验证：定向 2 tests / 13 assertions；完整回归 116 tests / 866 assertions；PHPStan 0 errors。
+- M2.1 风险：尚未对运行中数据库执行同步命令；待 M2 页面与审计闭环完成后统一做受控环境验收。
+- 下一断点：M2 第 2 步 Web 管理导航与真实空状态页面 RED。
