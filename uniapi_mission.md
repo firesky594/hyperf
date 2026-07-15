@@ -48,7 +48,7 @@
 2. [x] 容器运行定向测试并得到预期 RED：缺少 UniAPI 页面标题，1 test / 1 failure。
 3. [x] 实现最小终端风格总览，未接通模块明确显示“尚未接入实时数据”。
 4. [x] 渲染器 9 tests / 84 assertions；完整回归 114 tests / 853 assertions；PHPStan 0 errors。
-5. [ ] 更新任务证据，中文提交并推送 `origin main`。
+5. [ ] 已用中文提交 `0b96425`；推送仍因 GitHub HTTPS 凭据缺失而阻塞。
 
 ### M2：管理员与 RBAC 闭环
 
@@ -100,7 +100,7 @@
 
 ## 5. 当前唯一任务
 
-完成 M1 第 5 步：选择性暂存页面、测试和本文档，中文提交后重试推送 `origin main`。远端认证恢复后必须同时推送尚未远端同步的 `de09300`。
+恢复 GitHub 认证并执行 `git push origin main`，同步 `de09300`、`0b96425` 及其任务记录提交。推送成功后再进入 M2 权限同步服务 RED。
 
 ## 6. 本轮证据
 
@@ -115,5 +115,7 @@
 - M1 GREEN：`AgentAdminPageRendererTest` 为 9 tests / 84 assertions。
 - M1 回归：容器 `composer test` 为 114 tests / 853 assertions；`composer analyse` 为 0 errors。
 - M1 文件：`app/View/AgentAdminPageRenderer.php`、`test/Cases/AgentAdminPageRendererTest.php`、`test/Cases/AgentAdminControllerTest.php`。
+- M1 提交：`0b96425 界面：升级统一接口平台系统总览`。
+- M1 推送：第二次尝试仍失败，错误为无法读取 GitHub HTTPS 用户名。
 - 风险：GitHub 凭据缺失，两个本地中文提交需要在认证恢复后推送。
-- 下一断点：M1 第 5 步中文提交并重试推送；随后进入 M2 权限同步服务 RED。
+- 下一断点：配置 GitHub 凭据并推送 `origin main`；随后进入 M2 权限同步服务 RED。
