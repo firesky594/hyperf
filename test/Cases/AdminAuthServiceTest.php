@@ -29,7 +29,7 @@ use RuntimeException;
  */
 class AdminAuthServiceTest extends TestCase
 {
-    private const USER_QUERY = 'SELECT id, username, password_hash, status FROM admin_users WHERE username = ? LIMIT 1 FOR UPDATE';
+    private const USER_QUERY = 'SELECT id, username, password_hash, status, is_super_admin, must_change_password FROM admin_users WHERE username = ? AND deleted_at IS NULL LIMIT 1 FOR UPDATE';
 
     private const ENABLED_QUERY = 'SELECT id, status FROM admin_users WHERE id = ? LIMIT 1 FOR UPDATE';
 
@@ -41,6 +41,21 @@ class AdminAuthServiceTest extends TestCase
     {
         Mockery::close();
         parent::tearDown();
+    }
+
+    public function testRevokeAdminSessionsDeletesEveryIndexedSessionAndRegistry(): void
+    {
+        $db = Mockery::mock(Db::class);
+        $redis = Mockery::mock(Redis::class);
+        $first = 'admin:session:' . str_repeat('a', 64);
+        $second = 'admin:session:' . str_repeat('b', 64);
+        $redis->shouldReceive('sMembers')->once()->with('admin:sessions:41')->andReturn([$first, $second]);
+        $redis->shouldReceive('del')->once()->with($first)->andReturn(1);
+        $redis->shouldReceive('del')->once()->with($second)->andReturn(1);
+        $redis->shouldReceive('del')->once()->with('admin:sessions:41')->andReturn(1);
+
+        $this->service($db, $redis)->revokeAdminSessions(41);
+        self::addToAssertionCount(1);
     }
 
     public function testLoginCreatesHashedRedisSessionForEnabledAdministrator(): void
@@ -79,6 +94,8 @@ class AdminAuthServiceTest extends TestCase
                 'username' => 'root_admin',
                 'password_hash' => self::VALID_PASSWORD_HASH,
                 'status' => 1,
+                'is_super_admin' => 1,
+                'must_change_password' => 1,
             ]]);
         $connection->shouldReceive('update')->once()->withArgs(
             static fn (string $sql, array $bindings): bool => str_contains($sql, 'UPDATE admin_users SET last_login_at = NOW()')
@@ -93,6 +110,12 @@ class AdminAuthServiceTest extends TestCase
                 return $committed && str_starts_with($key, 'admin:session:') && $ttl === 7200;
             }
         )->andReturn(true);
+        $redis->shouldReceive('sAdd')->once()->withArgs(
+            static function (string $registryKey, string $sessionKey) use (&$storedKey): bool {
+                return $registryKey === 'admin:sessions:41' && $sessionKey === $storedKey;
+            }
+        )->andReturn(1);
+        $redis->shouldReceive('expire')->once()->with('admin:sessions:41', 7200)->andReturn(true);
 
         $result = $this->service($db, $redis)->login('root_admin', 'correct-password', '203.0.113.10');
         $session = json_decode((string) $storedPayload, true, 512, JSON_THROW_ON_ERROR);
@@ -107,6 +130,8 @@ class AdminAuthServiceTest extends TestCase
         self::assertSame(self::NOW, $session['issued_at']);
         self::assertSame(self::NOW + 7200, $session['expires_at']);
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/D', $session['csrf_token']);
+        self::assertTrue($session['is_super_admin']);
+        self::assertTrue($session['must_change_password']);
         self::assertSame($session, $result['session']);
     }
 
@@ -399,6 +424,11 @@ class AdminAuthServiceTest extends TestCase
                     && $ttl === 7200;
             }
         )->andReturn(true);
+        $redis->shouldReceive('sAdd')->once()->withArgs(
+            static fn (string $registryKey, string $sessionKey): bool => $registryKey === 'admin:sessions:41'
+                && str_starts_with($sessionKey, 'admin:session:')
+        )->andReturn(1);
+        $redis->shouldReceive('expire')->once()->with('admin:sessions:41', 7200)->andReturn(true);
 
         $result = $this->service($db, $redis)->login('root_admin', 'correct-password', '203.0.113.10');
 
@@ -771,9 +801,20 @@ class AdminAuthServiceTest extends TestCase
                 return str_starts_with($key, 'admin:session:');
             }
         )->andReturn(true);
+        $redis->shouldReceive('sAdd')->once()->withArgs(
+            static function (string $registryKey, string $sessionKey) use (&$storedSessionKey): bool {
+                return $registryKey === 'admin:sessions:41' && $sessionKey === $storedSessionKey;
+            }
+        )->andReturn(1);
+        $redis->shouldReceive('expire')->once()->with('admin:sessions:41', 7200)->andReturn(true);
         $redis->shouldReceive('del')->once()->withArgs(
             static function (string $key) use (&$storedSessionKey): bool {
                 return $key === $storedSessionKey;
+            }
+        )->andReturn(1);
+        $redis->shouldReceive('sRem')->once()->withArgs(
+            static function (string $registryKey, string $sessionKey) use (&$storedSessionKey): bool {
+                return $registryKey === 'admin:sessions:41' && $sessionKey === $storedSessionKey;
             }
         )->andReturn(1);
 
@@ -896,6 +937,8 @@ class AdminAuthServiceTest extends TestCase
             'issued_at' => self::NOW - 60,
             'expires_at' => self::NOW - 60 + 7200,
             'csrf_token' => str_repeat('b', 64),
+            'is_super_admin' => true,
+            'must_change_password' => false,
         ];
 
         $redis->shouldReceive('get')->once()

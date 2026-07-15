@@ -86,6 +86,38 @@ class AdminUserProvisionerTest extends TestCase
         ], $service->provisionSuperAdmin());
     }
 
+    public function testProvisionSuperAdminRepairsExistingWelkinAndRotatesTemporaryPassword(): void
+    {
+        $db = Mockery::mock(Db::class);
+        $ids = Mockery::mock(IdGeneratorInterface::class);
+        $schema = Mockery::mock(AdminSchemaService::class);
+        $schema->shouldReceive('ensureSchema')->once();
+        $db->shouldReceive('select')->once()->andReturn([(object) ['id' => 77]]);
+        $ids->shouldReceive('generate')->never();
+        $db->shouldReceive('update')->once()->withArgs(
+            static fn (string $sql, array $bindings): bool => str_contains($sql, 'status = 1')
+                && str_contains($sql, 'is_super_admin = 1')
+                && str_contains($sql, 'must_change_password = 1')
+                && str_contains($sql, 'deleted_at = NULL')
+                && $bindings === ['hashed:Rotated-Password-2026!', 'welkin']
+        )->andReturn(1);
+
+        $service = new AdminUserProvisioner(
+            $db,
+            $ids,
+            $schema,
+            static fn (string $value): string => 'hashed:' . $value,
+            static fn (): string => 'Rotated-Password-2026!'
+        );
+
+        self::assertSame([
+            'id' => 77,
+            'username' => 'welkin',
+            'created' => false,
+            'temporary_password' => 'Rotated-Password-2026!',
+        ], $service->provisionSuperAdmin());
+    }
+
     public function testDefaultHasherUsesPasswordBytesAfterBcryptLimit(): void
     {
         $db = Mockery::mock(Db::class);

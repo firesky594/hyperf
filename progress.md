@@ -162,9 +162,9 @@
 
 ### 3.1 当前精确断点
 
-- 当前阶段：阶段 2 / 任务 2 超管初始化与首次改密。
-- 最后完成：任务 2 的超管创建与 `admin:setup` 命令子循环通过；命令固定初始化 `welkin`，生成并仅输出一次临时密码。
-- 下一步：为已存在 `welkin` 的重置/修复幂等行为新增 RED，再完成首次改密服务与门禁。
+- 当前阶段：阶段 2 / 任务 3 RBAC、路由元数据与权限同步。
+- 最后完成：任务 2 超管初始化、幂等修复、首次改密、会话撤销、路由门禁和终端改密页，完整回归通过。
+- 下一步：提交任务 2，然后为后台路由权限编码唯一性和方法/路径绑定编写 RouteRegistry RED。
 - 当前未修改运行中数据库或服务；Schema 仅通过 Mockery 单元测试验证，尚未对线上数据库执行。
 
 ### 3.2 本轮更新证据
@@ -224,18 +224,18 @@
 
 ### 任务 2：超管初始化与首次改密
 
-**状态：进行中**
+**状态：已完成**
 
 **文件：** 修改 Provisioner、SetupCommand、AuthService、AuthMiddleware 和路由；新建 `AdminPasswordService.php`、`AdminPasswordChangeMiddleware.php`、`AgentAdminPasswordController.php` 及测试。
 
 **接口：** `provisionSuperAdmin(string $username = 'welkin'): array`、`changePassword(int $adminId, string $current, string $new): void`、`resetPassword(int $adminId): string`、`revokeAdminSessions(int $adminId): void`。
 
-1. [ ] 测试 `welkin` 幂等初始化、超管标识、强制改密、至少 20 位随机密码且仅当次返回。
-2. [ ] 看见 RED 后实现 Provisioner 和命令 GREEN。
-3. [ ] 测试首次改密路由门禁、密码校验、CSRF、改密后会话撤销和重新登录。
-4. [ ] 实现改密服务、中间件、控制器和终端风格页面。
-5. [ ] 运行新增测试及现有管理员认证回归。
-6. [ ] 更新进度并提交 `feat: require administrator password rotation`。
+1. [x] 测试 `welkin` 幂等初始化、超管标识、强制改密、至少 20 位随机密码且仅当次返回。
+2. [x] 看见 Provisioner 和命令 RED 后实现 GREEN。
+3. [x] 测试首次改密路由门禁、密码校验、CSRF、改密后会话撤销和重新登录。
+4. [x] 实现改密服务、中间件、控制器和终端风格页面。
+5. [x] 新增/定向测试通过；完整回归 112 tests / 679 assertions；PHPStan 0 errors。
+6. [x] 已更新进度，待提交 `feat: require administrator password rotation`。
 
 **进行中证据：**
 
@@ -244,11 +244,17 @@
 - RED 2：旧命令报 `Not enough arguments (missing: "username")`。
 - GREEN 2：`AdminSetupCommandTest` 与 Provisioner 测试共 6 tests / 11 assertions。
 - 当前完整回归：102 tests / 652 assertions；PHPStan 0 errors。
-- 当前尚未完成：已存在 `welkin` 修复测试、首次改密服务、路由门禁、页面和会话撤销。
+- 后续 RED：已存在 `welkin` 修复时错误走 INSERT；修复后 6 tests / 8 assertions。
+- 改密服务 RED：`Class "App\Service\AdminPasswordService" not found`。
+- 会话撤销 RED：`Call to undefined method AdminAuthService::revokeAdminSessions()`。
+- 会话索引 RED：登录未调用 `sAdd`。
+- 门禁 RED：`AdminPasswordChangeMiddleware` 不存在。
+- HTTP RED：改密 GET/POST 均为 404。
+- 最终 GREEN：完整回归 112 tests / 679 assertions；PHPStan 0 errors。
 
 ### 任务 3：RBAC、路由元数据与权限同步
 
-**状态：待执行**
+**状态：进行中**
 
 **文件：** 新建 `app/Rbac/AdminRouteDefinition.php`、`AdminRouteRegistry.php`、`AdminPermissionService.php`、`AdminRoleService.php`、`AdminPermissionMiddleware.php`、`AdminPermissionSyncCommand.php` 及测试；修改路由。
 

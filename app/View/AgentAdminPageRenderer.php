@@ -248,6 +248,50 @@ HTML;
         return $this->error(503, $message);
     }
 
+    public function password(string $csrfToken, bool $forced, string $error = ''): string
+    {
+        $csrfToken = $this->escape($csrfToken);
+        $error = $this->escape($error);
+        $styles = $this->styles();
+        $heading = $forced ? '首次登录·更新密码' : '更新管理员密码';
+        $notice = $forced ? '<p class="lede">临时凭据已通过验证。完成改密后才能进入运行控制台。</p>' : '';
+        $errorBlock = $error === '' ? '' : '<div class="error-banner" role="alert">' . $error . '</div>';
+
+        return <<<HTML
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>{$heading} · Agent Admin</title>
+    <style>{$styles}</style>
+</head>
+<body class="login-page">
+    <main class="login-shell">
+        <section class="login-panel" aria-labelledby="password-heading">
+            <p class="eyebrow">SECURITY GATE / PASSWORD ROTATION</p>
+            <h1 id="password-heading">{$heading}</h1>
+            {$notice}
+            {$errorBlock}
+            <form action="/agent_admin/password" method="post" class="login-form">
+                <input type="hidden" name="_csrf" value="{$csrfToken}">
+                <label>当前密码<input name="current_password" type="password" required autocomplete="current-password"></label>
+                <label>新密码<input name="new_password" type="password" required minlength="12" autocomplete="new-password"></label>
+                <label>确认新密码<input name="new_password_confirmation" type="password" required minlength="12" autocomplete="new-password"></label>
+                <button type="submit">写入新凭据 / COMMIT</button>
+            </form>
+            <form action="/agent_admin/logout" method="post" class="login-form">
+                <input type="hidden" name="_csrf" value="{$csrfToken}">
+                <button type="submit" class="logout-button">安全退出</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>
+HTML;
+    }
+
     public function error(int $status, string $message): string
     {
         $message = $this->escape($message);

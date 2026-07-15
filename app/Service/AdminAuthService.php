@@ -23,11 +23,14 @@ use function Hyperf\Support\env;
 
 class AdminAuthService
 {
-    private const USER_QUERY = 'SELECT id, username, password_hash, status FROM admin_users WHERE username = ? LIMIT 1 FOR UPDATE';
+    private const USER_QUERY = 'SELECT id, username, password_hash, status, is_super_admin, must_change_password '
+        . 'FROM admin_users WHERE username = ? AND deleted_at IS NULL LIMIT 1 FOR UPDATE';
 
     private const ENABLED_QUERY = 'SELECT id, status FROM admin_users WHERE id = ? LIMIT 1 FOR UPDATE';
 
     private const SESSION_PREFIX = 'admin:session:';
+
+    private const SESSION_REGISTRY_PREFIX = 'admin:sessions:';
 
     private const FAILURE_PREFIX = 'admin:login:fail:';
 
@@ -178,6 +181,7 @@ LUA;
         $activeReservationKey = $this->activeReservationKey($failureKey);
         $reservationId = null;
         $sessionKey = null;
+        $registryKey = null;
 
         try {
             $reservationId = bin2hex(random_bytes(32));
@@ -193,12 +197,21 @@ LUA;
                 'issued_at' => $now,
                 'expires_at' => $now + $this->tokenTtl,
                 'csrf_token' => bin2hex(random_bytes(32)),
+                'is_super_admin' => (int) ($user['is_super_admin'] ?? 0) === 1,
+                'must_change_password' => (int) ($user['must_change_password'] ?? 0) === 1,
             ];
             $payload = json_encode($session, JSON_THROW_ON_ERROR);
 
             $sessionKey = $this->sessionKey($token);
             $cached = $this->redis->setex($sessionKey, $this->tokenTtl, $payload);
             if ($cached !== true && $cached !== 'OK') {
+                throw AdminAuthException::unavailable();
+            }
+            $registryKey = self::SESSION_REGISTRY_PREFIX . (int) $user['id'];
+            if ($this->redis->sAdd($registryKey, $sessionKey) !== 1) {
+                throw AdminAuthException::unavailable();
+            }
+            if ($this->redis->expire($registryKey, $this->tokenTtl) !== true) {
                 throw AdminAuthException::unavailable();
             }
 
@@ -213,6 +226,9 @@ LUA;
         } catch (AdminAuthException $exception) {
             if ($sessionKey !== null) {
                 $this->bestEffortDeleteSession($sessionKey);
+            }
+            if ($registryKey !== null && $sessionKey !== null) {
+                $this->bestEffortRemoveSessionFromRegistry($registryKey, $sessionKey);
             }
 
             if ($reservationId !== null && $exception->status() === 401) {
@@ -235,6 +251,9 @@ LUA;
         } catch (Throwable $throwable) {
             if ($sessionKey !== null) {
                 $this->bestEffortDeleteSession($sessionKey);
+            }
+            if ($registryKey !== null && $sessionKey !== null) {
+                $this->bestEffortRemoveSessionFromRegistry($registryKey, $sessionKey);
             }
 
             if ($reservationId !== null) {
@@ -295,6 +314,42 @@ LUA;
         try {
             $deleted = $this->redis->del($this->sessionKey($token));
             if ($deleted === false) {
+                throw AdminAuthException::unavailable();
+            }
+        } catch (AdminAuthException $exception) {
+            throw $exception;
+        } catch (Throwable $throwable) {
+            throw AdminAuthException::unavailable(previous: $throwable);
+        }
+    }
+
+    public function revokeAdminSessions(int $adminId): void
+    {
+        if ($adminId <= 0) {
+            throw AdminAuthException::validation();
+        }
+
+        try {
+            $registryKey = self::SESSION_REGISTRY_PREFIX . $adminId;
+            $sessionKeys = $this->redis->sMembers($registryKey);
+            if (! is_array($sessionKeys)) {
+                throw AdminAuthException::unavailable();
+            }
+
+            foreach ($sessionKeys as $sessionKey) {
+                if (
+                    ! is_string($sessionKey)
+                    || preg_match('/^admin:session:[a-f0-9]{64}$/D', $sessionKey) !== 1
+                ) {
+                    continue;
+                }
+
+                if ($this->redis->del($sessionKey) === false) {
+                    throw AdminAuthException::unavailable();
+                }
+            }
+
+            if ($this->redis->del($registryKey) === false) {
                 throw AdminAuthException::unavailable();
             }
         } catch (AdminAuthException $exception) {
@@ -460,6 +515,14 @@ LUA;
         }
     }
 
+    private function bestEffortRemoveSessionFromRegistry(string $registryKey, string $sessionKey): void
+    {
+        try {
+            $this->redis->sRem($registryKey, $sessionKey);
+        } catch (Throwable) {
+        }
+    }
+
     private function sessionKey(string $token): string
     {
         return self::SESSION_PREFIX . hash('sha256', $token);
@@ -495,11 +558,19 @@ LUA;
 
     private function isValidSession(mixed $session, int $now): bool
     {
-        if (! is_array($session) || count($session) !== 5) {
+        if (! is_array($session) || count($session) !== 7) {
             return false;
         }
 
-        foreach (['admin_id', 'username', 'issued_at', 'expires_at', 'csrf_token'] as $field) {
+        foreach ([
+            'admin_id',
+            'username',
+            'issued_at',
+            'expires_at',
+            'csrf_token',
+            'is_super_admin',
+            'must_change_password',
+        ] as $field) {
             if (! array_key_exists($field, $session)) {
                 return false;
             }
@@ -517,6 +588,8 @@ LUA;
             && $this->tokenTtl === $session['expires_at'] - $session['issued_at']
             && $session['expires_at'] > $now
             && is_string($session['csrf_token'])
-            && preg_match('/^[a-f0-9]{64}$/D', $session['csrf_token']) === 1;
+            && preg_match('/^[a-f0-9]{64}$/D', $session['csrf_token']) === 1
+            && is_bool($session['is_super_admin'])
+            && is_bool($session['must_change_password']);
     }
 }

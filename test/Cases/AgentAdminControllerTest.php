@@ -14,6 +14,7 @@ namespace HyperfTest\Cases;
 
 use App\Exception\AdminAuthException;
 use App\Service\AdminAuthService;
+use App\Service\AdminPasswordService;
 use Hyperf\Contract\ConfigInterface;
 use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\Framework\Logger\StdoutLogger;
@@ -34,6 +35,51 @@ use function Hyperf\Support\make;
  */
 class AgentAdminControllerTest extends TestCase
 {
+    public function testPasswordPageRendersSessionBoundForm(): void
+    {
+        $token = str_repeat('6', 64);
+        $session = $this->session(true);
+        $auth = $this->mock(AdminAuthService::class);
+        $auth->shouldReceive('resolveSession')->once()->with($token)->andReturn($session);
+
+        $response = $this->request('GET', '/agent_admin/password', [], [
+            'agent_admin_session' => $token,
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('action="/agent_admin/password"', (string) $response->getBody());
+        self::assertStringContainsString('name="_csrf" value="' . $session['csrf_token'] . '"', (string) $response->getBody());
+        self::assertStringContainsString('首次登录', (string) $response->getBody());
+        $this->assertSecurityHeaders($response);
+    }
+
+    public function testPasswordChangeClearsSessionAndRedirectsToLogin(): void
+    {
+        $token = str_repeat('5', 64);
+        $session = $this->session(true);
+        $auth = $this->mock(AdminAuthService::class);
+        $passwords = $this->mock(AdminPasswordService::class);
+        $auth->shouldReceive('resolveSession')->once()->with($token)->andReturn($session);
+        $passwords->shouldReceive('changePassword')->once()->with(
+            $session['admin_id'],
+            'temporary-password',
+            'new-strong-password'
+        );
+
+        $response = $this->request('POST', '/agent_admin/password', [
+            '_csrf' => $session['csrf_token'],
+            'current_password' => 'temporary-password',
+            'new_password' => 'new-strong-password',
+            'new_password_confirmation' => 'new-strong-password',
+        ], [
+            'agent_admin_session' => $token,
+        ]);
+
+        self::assertSame(303, $response->getStatusCode());
+        self::assertSame('/agent_admin/login', $response->getHeaderLine('Location'));
+        self::assertSame('', $this->cookie($response, '/agent_admin', 'agent_admin_session')->getValue());
+    }
+
     public function testLoginPageRendersHtmlAndSetsFreshCsrfCookie(): void
     {
         $auth = $this->mock(AdminAuthService::class);
@@ -435,7 +481,7 @@ class AgentAdminControllerTest extends TestCase
     /**
      * @return array{admin_id:int,username:string,issued_at:int,expires_at:int,csrf_token:string}
      */
-    private function session(): array
+    private function session(bool $mustChangePassword = false): array
     {
         $issuedAt = time();
 
@@ -445,6 +491,8 @@ class AgentAdminControllerTest extends TestCase
             'issued_at' => $issuedAt,
             'expires_at' => $issuedAt + 7200,
             'csrf_token' => str_repeat('7', 64),
+            'is_super_admin' => true,
+            'must_change_password' => $mustChangePassword,
         ];
     }
 
