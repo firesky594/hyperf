@@ -376,6 +376,29 @@ class AgentAdminControllerTest extends TestCase
         $this->assertSecurityHeaders($response);
     }
 
+    public function testValidSessionCanOpenEveryRbacManagementPage(): void
+    {
+        $token = str_repeat('8', 64);
+        $session = $this->session();
+        $auth = $this->mock(AdminAuthService::class);
+        $auth->shouldReceive('resolveSession')->times(5)->with($token)->andReturn($session);
+        $pages = [
+            '/agent_admin/administrators' => '管理员管理',
+            '/agent_admin/roles' => '角色管理',
+            '/agent_admin/permissions' => '权限管理',
+            '/agent_admin/menus' => '菜单管理',
+            '/agent_admin/audit' => '操作日志',
+        ];
+
+        foreach ($pages as $path => $heading) {
+            $response = $this->request('GET', $path, [], ['agent_admin_session' => $token]);
+            self::assertSame(200, $response->getStatusCode(), $path);
+            self::assertStringContainsString($heading, (string) $response->getBody());
+            self::assertStringContainsString('尚未接入数据库数据', (string) $response->getBody());
+            $this->assertSecurityHeaders($response);
+        }
+    }
+
     public function testBadLogoutCsrfReturns419WithoutDeletingSession(): void
     {
         $token = str_repeat('3', 64);

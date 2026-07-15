@@ -133,6 +133,40 @@ class AgentAdminPageRendererTest extends TestCase
         self::assertSame(1, substr_count($html, '<h1'));
     }
 
+    public function testManagementPagesExposeRbacNavigationAndHonestEmptyStates(): void
+    {
+        $renderer = new AgentAdminPageRenderer();
+        $session = [
+            'admin_id' => '594',
+            'username' => 'welkin',
+            'issued_at' => 1783918800,
+            'expires_at' => 1783926000,
+            'csrf_token' => 'logout-token',
+        ];
+        $pages = [
+            'administrators' => ['管理员管理', '/agent_admin/administrators'],
+            'roles' => ['角色管理', '/agent_admin/roles'],
+            'permissions' => ['权限管理', '/agent_admin/permissions'],
+            'menus' => ['菜单管理', '/agent_admin/menus'],
+            'audit' => ['操作日志', '/agent_admin/audit'],
+        ];
+
+        foreach ($pages as $key => [$heading, $path]) {
+            $html = $renderer->management($key, $session);
+            self::assertStringContainsString('<h1 id="management-heading">' . $heading . '</h1>', $html);
+            self::assertStringContainsString('href="' . $path . '" aria-current="page"', $html);
+            self::assertStringContainsString('尚未接入数据库数据', $html);
+            self::assertStringContainsString('数据接入后将在此处显示', $html);
+            self::assertStringContainsString('name="_csrf" value="logout-token"', $html);
+            self::assertSame(1, substr_count($html, '<h1'));
+        }
+
+        $home = $renderer->home($session);
+        foreach ($pages as [, $path]) {
+            self::assertStringContainsString('href="' . $path . '"', $home);
+        }
+    }
+
     public function testUnavailablePageEscapesItsMessage(): void
     {
         $html = (new AgentAdminPageRenderer())->unavailable('稍后 <script>alert(1)</script>');

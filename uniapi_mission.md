@@ -5,9 +5,9 @@
 ## 1. 当前状态
 
 - 当前分支：`main`。
-- 当前阶段：M2 管理员与 RBAC 闭环 / 权限同步服务。
-- 最近业务提交：`0b96425 界面：升级统一接口平台系统总览`。
-- 最近完整验证：`composer test` 为 114 tests / 853 assertions；`composer analyse` 为 0 errors。
+- 当前阶段：M2 管理员与 RBAC 闭环 / Web 管理入口。
+- 最近业务提交：`60a9783 功能：实现后台路由权限同步`。
+- 最近完整验证：`composer test` 为 118 tests / 941 assertions；`composer analyse` 为 0 errors。
 - 数据库状态：Schema 仅在单元测试中验证，未对运行中数据库执行变更。
 - 工作方式：Web 界面优先；完成步骤后更新本文档、中文提交并推送 `origin main`。
 
@@ -52,10 +52,10 @@
 
 ### M2：管理员与 RBAC 闭环
 
-**状态：未开始**
+**状态：进行中**
 
 1. [x] 权限同步服务与命令：新增、恢复、停用系统权限，不覆盖自定义权限。
-2. [ ] Web 先行：管理员、角色、权限、菜单、审计导航与真实空状态页面。
+2. [x] Web 先行：管理员、角色、权限、菜单、审计导航与真实空状态页面。
 3. [ ] 多角色权限并集、角色/权限停用即时失效、超管服务端直通及权限中间件。
 4. [ ] 管理员、角色、权限、菜单 CRUD；所有写操作 POST + CSRF + 事务审计。
 5. [ ] 永久数据库全量审计、敏感字段过滤、只读检索页面和查询审计失败关闭。
@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M2 第 2 步：先为管理员、角色、权限、菜单、审计导航和真实空状态页面编写失败测试；观察正确 RED 后注册受保护 GET 路由并实现终端风格页面。
+执行 M2 第 3 步：先为超管直通、普通管理员多角色权限并集、停用即时失效编写服务 RED；再实现权限解析服务和路由权限中间件。
 
 ## 6. 本轮证据
 
@@ -147,4 +147,9 @@
 - M2.1 文件：`app/Service/AdminPermissionService.php`、`app/Command/AdminPermissionSyncCommand.php`、`config/autoload/commands.php`、两个对应测试。
 - M2.1 验证：定向 2 tests / 13 assertions；完整回归 116 tests / 866 assertions；PHPStan 0 errors。
 - M2.1 风险：尚未对运行中数据库执行同步命令；待 M2 页面与审计闭环完成后统一做受控环境验收。
-- 下一断点：M2 第 2 步 Web 管理导航与真实空状态页面 RED。
+- M2.2 RED：渲染器测试失败于 `AgentAdminPageRenderer::management()` 不存在。
+- M2.2 GREEN：新增共享 RBAC 导航、五个终端风格真实空状态页面、管理控制器及五条认证/改密门禁路由。
+- M2.2 文件：`app/View/AgentAdminPageRenderer.php`、`app/Controller/AgentAdminManagementController.php`、`config/routes.php`、渲染与 HTTP 测试。
+- M2.2 验证：渲染器 10 tests / 119 assertions；五路由 HTTP 1 test / 40 assertions；完整回归 118 tests / 941 assertions；PHPStan 0 errors。
+- M2.2 风险：页面尚未连接数据库，已明确显示真实空状态；权限中间件将在 M2.3 接入。
+- 下一断点：M2 第 3 步权限解析服务与中间件 RED。

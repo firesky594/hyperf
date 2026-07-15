@@ -19,6 +19,17 @@ Router::post('/agent_admin/login', 'App\Controller\AgentAdminAuthController@logi
 Router::get('/agent_admin', 'App\Controller\AgentAdminHomeController@index', [
     'middleware' => [AdminAuthMiddleware::class, AdminPasswordChangeMiddleware::class],
 ]);
+foreach ([
+    '/agent_admin/administrators' => 'administrators',
+    '/agent_admin/roles' => 'roles',
+    '/agent_admin/permissions' => 'permissions',
+    '/agent_admin/menus' => 'menus',
+    '/agent_admin/audit' => 'audit',
+] as $path => $action) {
+    Router::get($path, 'App\Controller\AgentAdminManagementController@' . $action, [
+        'middleware' => [AdminAuthMiddleware::class, AdminPasswordChangeMiddleware::class],
+    ]);
+}
 Router::get('/agent_admin/password', 'App\Controller\AgentAdminPasswordController@page', [
     'middleware' => [AdminAuthMiddleware::class, AdminPasswordChangeMiddleware::class],
 ]);

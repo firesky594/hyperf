@@ -117,6 +117,7 @@ HTML;
         $issuedAt = $this->escape($this->formatTimestamp((int) ($session['issued_at'] ?? 0)));
         $expiresAt = $this->escape($this->formatTimestamp((int) ($session['expires_at'] ?? 0)));
         $csrfToken = $this->escape((string) ($session['csrf_token'] ?? ''));
+        $navigation = $this->managementNavigation('dashboard');
         $styles = $this->styles();
 
         return <<<HTML
@@ -154,12 +155,7 @@ HTML;
     <div class="console-layout">
         <aside class="console-rail">
             <p class="rail-label">NAV / 01</p>
-            <nav aria-label="平台功能导航">
-                <a class="nav-item" href="/agent_admin" aria-current="page">
-                    <span aria-hidden="true">01</span>
-                    <span>总览</span>
-                </a>
-            </nav>
+            <nav aria-label="平台功能导航">{$navigation}</nav>
             <div class="rail-meta">
                 <span>区域</span>
                 <strong>CN / SH</strong>
@@ -283,6 +279,78 @@ HTML;
 HTML;
     }
 
+    /**
+     * @param array{admin_id?: mixed, username?: mixed, csrf_token?: mixed} $session
+     */
+    public function management(string $module, array $session): string
+    {
+        $modules = [
+            'administrators' => ['管理员管理', 'ADMINISTRATORS / 02', '维护独立后台管理员、状态、角色与临时密码。'],
+            'roles' => ['角色管理', 'ROLES / 03', '维护角色及其权限集合，管理员可关联多个角色。'],
+            'permissions' => ['权限管理', 'PERMISSIONS / 04', '管理路由同步权限与后台自定义权限。'],
+            'menus' => ['菜单管理', 'MENUS / 05', '维护菜单层级、路由、排序和所需权限。'],
+            'audit' => ['操作日志', 'AUDIT / 06', '查询永久保存、只追加且不可删除的后台审计记录。'],
+        ];
+        if (! isset($modules[$module])) {
+            throw new \InvalidArgumentException('Unknown administrator module.');
+        }
+
+        [$heading, $code, $description] = $modules[$module];
+        $adminId = $this->escape((string) ($session['admin_id'] ?? ''));
+        $username = $this->escape((string) ($session['username'] ?? ''));
+        $csrfToken = $this->escape((string) ($session['csrf_token'] ?? ''));
+        $navigation = $this->managementNavigation($module);
+        $styles = $this->styles();
+
+        return <<<HTML
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>{$heading} · UniAPI</title>
+    <style>{$styles}</style>
+</head>
+<body class="console-page">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <header class="console-header">
+        <a class="brand" href="/agent_admin" aria-label="UniAPI 管理后台首页">
+            <span class="brand-mark" aria-hidden="true">U//</span>
+            <span><strong>UniAPI</strong><small>统一接口平台 / Agent Admin</small></span>
+        </a>
+        <div class="console-actions">
+            <div class="system-state" aria-label="管理控制面在线"><span class="state-dot" aria-hidden="true"></span><span>CONTROL ONLINE</span></div>
+            <form action="/agent_admin/logout" method="post">
+                <input type="hidden" name="_csrf" value="{$csrfToken}">
+                <button class="logout-button" type="submit">安全退出</button>
+            </form>
+        </div>
+    </header>
+    <div class="console-layout">
+        <aside class="console-rail">
+            <p class="rail-label">ADMIN / RBAC</p>
+            <nav aria-label="平台功能导航">{$navigation}</nav>
+            <div class="rail-meta"><span>策略</span><strong>SERVER ENFORCED</strong><span>审计</span><strong>DATABASE / PERMANENT</strong></div>
+        </aside>
+        <main id="main-content" class="console-main" tabindex="-1">
+            <section class="overview-head" aria-labelledby="management-heading">
+                <div><p class="eyebrow">{$code}</p><h1 id="management-heading">{$heading}</h1><p class="lede">{$description}</p></div>
+                <div class="operator-chip" aria-label="当前管理员"><span>当前管理员</span><strong>{$username}</strong><small>ID / {$adminId}</small></div>
+            </section>
+            <section class="boundary-panel management-empty" aria-labelledby="empty-heading">
+                <div><p class="eyebrow">DATA STATUS</p><h2 id="empty-heading">尚未接入数据库数据</h2></div>
+                <p>页面路由与视觉入口已可用。数据接入后将在此处显示；当前不生成演示记录，也不伪造统计结果。</p>
+                <span class="boundary-tag">EMPTY / VERIFIED</span>
+            </section>
+        </main>
+    </div>
+    <footer class="site-footer console-footer"><span>UNIAPI / ADMIN CONTROL</span><span>RBAC · MENU · AUDIT</span></footer>
+</body>
+</html>
+HTML;
+    }
+
     public function unavailable(string $message = '后台服务暂时不可用，请稍后再试。'): string
     {
         return $this->error(503, $message);
@@ -377,6 +445,26 @@ HTML;
     private function escape(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    private function managementNavigation(string $active): string
+    {
+        $items = [
+            'dashboard' => ['01', '总览', '/agent_admin'],
+            'administrators' => ['02', '管理员', '/agent_admin/administrators'],
+            'roles' => ['03', '角色', '/agent_admin/roles'],
+            'permissions' => ['04', '权限', '/agent_admin/permissions'],
+            'menus' => ['05', '菜单', '/agent_admin/menus'],
+            'audit' => ['06', '日志', '/agent_admin/audit'],
+        ];
+        $html = '';
+        foreach ($items as $key => [$index, $label, $path]) {
+            $current = $key === $active ? ' aria-current="page"' : '';
+            $html .= '<a class="nav-item" href="' . $path . '"' . $current . '>'
+                . '<span aria-hidden="true">' . $index . '</span><span>' . $label . '</span></a>';
+        }
+
+        return $html;
     }
 
     private function formatTimestamp(int $timestamp): string
@@ -876,18 +964,35 @@ h1 {
     font-size: 9px;
 }
 
+.console-rail nav {
+    display: grid;
+    gap: 6px;
+}
+
 .nav-item {
     min-height: 48px;
     padding: 0 12px;
     display: grid;
     grid-template-columns: 30px 1fr;
     align-items: center;
-    border-left: 2px solid var(--teal);
-    color: var(--text);
-    background: var(--teal-dark);
+    border-left: 2px solid transparent;
+    color: var(--muted-strong);
+    background: transparent;
     text-decoration: none;
     font-size: 14px;
     font-weight: 750;
+}
+
+.nav-item:hover,
+.nav-item:focus-visible {
+    color: var(--text);
+    background: var(--ink-2);
+}
+
+.nav-item[aria-current="page"] {
+    border-left-color: var(--teal);
+    color: var(--text);
+    background: var(--teal-dark);
 }
 
 .nav-item span:first-child {
