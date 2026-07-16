@@ -9,6 +9,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 
+/** 维护后台菜单层级、路由、排序、状态及所需权限。 */
 class AdminMenuManagementService
 {
     public function __construct(private Db $db, private IdGeneratorInterface $ids, private AdminAuditService $audit) {}

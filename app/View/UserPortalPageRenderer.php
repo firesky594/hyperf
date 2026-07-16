@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\View;
 
+/** 渲染用户登录、身份工作台和供应商申请维护页面。 */
 class UserPortalPageRenderer
 {
     public function login(string $csrf, string $error = ''): string

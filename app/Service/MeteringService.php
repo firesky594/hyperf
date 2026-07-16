@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Service;
 use Hyperf\Contract\IdGeneratorInterface;use Hyperf\Database\ConnectionInterface;use Hyperf\DbConnection\Db;use Hyperf\Redis\Redis;
 use Throwable;
+/** 幂等记录网关调用事件，并按账期累计订阅用量。 */
 final class MeteringService
 {
  public function __construct(private Db$db,private Redis$redis,private IdGeneratorInterface$ids){}

@@ -10,6 +10,7 @@ use App\Service\AdminPasswordService;
 use App\View\AgentAdminPageRenderer;
 use Psr\Http\Message\ResponseInterface;
 
+/** 提供管理员密码修改页面并处理强制改密。 */
 class AgentAdminPasswordController extends AbstractController
 {
     public function __construct(

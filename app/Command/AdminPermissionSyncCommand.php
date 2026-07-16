@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Service\AdminPermissionService;
 use Hyperf\Command\Command;
 
+/** 将代码中的系统权限定义同步到数据库，并保留后台自定义权限。 */
 final class AdminPermissionSyncCommand extends Command
 {
     protected ?string $signature = 'admin:permissions:sync';

@@ -8,6 +8,7 @@ use App\Exception\AdminAuthException;
 use Hyperf\DbConnection\Db;
 use Throwable;
 
+/** 查询只追加且永久保存的后台操作审计记录。 */
 class AdminAuditQueryService
 {
     public function __construct(private Db $db) {}

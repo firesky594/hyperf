@@ -9,6 +9,7 @@ use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 use Throwable;
 
+/** 负责管理员密码强度校验、哈希生成和安全比对。 */
 class AdminPasswordService
 {
     private $passwordVerifier;

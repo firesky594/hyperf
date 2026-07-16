@@ -20,6 +20,7 @@ use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
 #[Listener]
+/** 记录数据库查询耗时与原始 SQL，避免日志拼接泄露绑定参数。 */
 class DbQueryExecutedListener implements ListenerInterface
 {
     /**

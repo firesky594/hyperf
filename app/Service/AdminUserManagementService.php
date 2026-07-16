@@ -9,6 +9,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 
+/** 维护后台管理员资料、状态、角色关联和密码重置。 */
 class AdminUserManagementService
 {
     private $passwordHasher;

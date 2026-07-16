@@ -7,6 +7,7 @@ namespace App\Service;
 use Hyperf\Redis\Redis;
 use InvalidArgumentException;
 
+/** 基于 Redis NX 锁和随机令牌提供安全的分布式互斥锁。 */
 class RedisLock
 {
     private const RELEASE_SCRIPT = <<<'LUA'

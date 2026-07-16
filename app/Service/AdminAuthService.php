@@ -21,6 +21,7 @@ use Throwable;
 
 use function Hyperf\Support\env;
 
+/** 完成管理员凭据校验、会话签发、读取和撤销。 */
 class AdminAuthService
 {
     private const USER_QUERY = 'SELECT id, username, password_hash, status, is_super_admin, must_change_password '

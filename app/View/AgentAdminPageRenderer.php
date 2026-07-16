@@ -15,6 +15,7 @@ namespace App\View;
 use DateTimeImmutable;
 use DateTimeZone;
 
+/** 渲染后台登录、首页和各管理模块的服务端 HTML 页面。 */
 class AgentAdminPageRenderer
 {
     private const TIMEZONE = 'Asia/Shanghai';

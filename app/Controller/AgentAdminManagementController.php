@@ -13,6 +13,7 @@ use App\Service\AdminUserManagementService;
 use App\View\AgentAdminPageRenderer;
 use Psr\Http\Message\ResponseInterface;
 
+/** 提供管理员、角色、权限、菜单和审计日志的后台查询页面。 */
 final class AgentAdminManagementController extends AbstractController
 {
     public function __construct(

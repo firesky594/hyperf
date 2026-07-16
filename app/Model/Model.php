@@ -14,6 +14,7 @@ namespace App\Model;
 
 use Hyperf\DbConnection\Model\Model as BaseModel;
 
+/** 项目模型基类：主键统一使用外部生成的整型雪花 ID。 */
 abstract class Model extends BaseModel
 {
     public bool $incrementing = false;

@@ -9,6 +9,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 
+/** 管理 API 商品、版本、端点、文档、定价及发布生命周期。 */
 class CatalogService
 {
     public function __construct(private Db $db, private IdGeneratorInterface $ids) {}

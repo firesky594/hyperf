@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Rbac;
 
+/** 集中登记后台路由与系统权限的对应关系。 */
 final class AdminRouteRegistry
 {
     /**

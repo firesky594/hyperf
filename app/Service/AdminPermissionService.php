@@ -10,6 +10,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 
+/** 将代码内权限定义同步到数据库并保护系统权限边界。 */
 class AdminPermissionService
 {
     public function __construct(

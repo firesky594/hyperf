@@ -19,6 +19,7 @@ use App\View\AgentAdminPageRenderer;
 use Hyperf\Contract\StdoutLoggerInterface;
 use Psr\Http\Message\ResponseInterface;
 
+/** 处理后台管理员登录、退出与会话 Cookie。 */
 class AgentAdminAuthController extends AbstractController
 {
     public function __construct(

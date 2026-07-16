@@ -5,6 +5,7 @@ use App\Exception\AuthException;
 use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
+/** 管理采购方应用凭据、API 订阅及供应商配额。 */
 final class ApplicationService
 {
  public function __construct(private Db $db,private IdGeneratorInterface $ids){}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\View;
 
+/** 渲染供应商 API 编辑发布页面及采购方 API 市场。 */
 final class CatalogPageRenderer
 {
     /** @param array<string,mixed> $session @param list<array<string,mixed>> $products */

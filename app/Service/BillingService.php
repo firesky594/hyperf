@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);namespace App\Service;
 use App\Exception\AuthException;use Hyperf\Contract\IdGeneratorInterface;use Hyperf\Database\ConnectionInterface;use Hyperf\DbConnection\Db;
+/** 管理账单生成、付款确认、逾期控制、佣金与供应商结算。 */
 final class BillingService
 {
  public function __construct(private Db$db,private IdGeneratorInterface$ids){}

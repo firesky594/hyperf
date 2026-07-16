@@ -6,6 +6,7 @@ namespace App\Service;
 
 use Hyperf\DbConnection\Db;
 
+/** 创建并升级后台管理员、RBAC、菜单和永久审计数据结构。 */
 class AdminSchemaService
 {
     public function __construct(private Db $db)

@@ -10,6 +10,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** 强制使用临时密码登录的管理员先完成改密，再访问后台功能。 */
 class AdminPasswordChangeMiddleware implements MiddlewareInterface
 {
     private const ALLOWED_PATHS = [

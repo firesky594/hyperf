@@ -9,6 +9,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 
+/** 查询用户工作台身份并处理供应商身份申请和资料维护。 */
 class UserIdentityService
 {
     public function __construct(private Db $db, private IdGeneratorInterface $ids) {}

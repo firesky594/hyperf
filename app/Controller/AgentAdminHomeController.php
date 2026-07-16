@@ -16,6 +16,7 @@ use App\Http\AgentAdminResponseFactory;
 use App\View\AgentAdminPageRenderer;
 use Psr\Http\Message\ResponseInterface;
 
+/** 渲染管理员登录后的后台首页。 */
 class AgentAdminHomeController extends AbstractController
 {
     public function __construct(

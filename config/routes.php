@@ -15,6 +15,7 @@ use App\Middleware\AdminPermissionMiddleware;
 use App\Middleware\UserAuthMiddleware;
 use Hyperf\HttpServer\Router\Router;
 
+// UniAPI 项目路由：覆盖后台控制面、用户门户、API 市场、网关状态和结算流程。
 Router::addRoute(['GET', 'HEAD'], '/', 'App\Controller\IndexController@index');
 Router::get('/agent_admin/login', 'App\Controller\AgentAdminAuthController@loginPage');
 Router::post('/agent_admin/login', 'App\Controller\AgentAdminAuthController@login');

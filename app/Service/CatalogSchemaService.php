@@ -6,6 +6,7 @@ namespace App\Service;
 
 use Hyperf\DbConnection\Db;
 
+/** 维护 API 商品、版本、端点、文档、价格及价格审计的数据结构。 */
 class CatalogSchemaService
 {
     public function __construct(private Db $db) {}

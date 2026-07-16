@@ -7,6 +7,7 @@ namespace App\Exception;
 use RuntimeException;
 use Throwable;
 
+/** 用户侧认证和业务校验异常，携带可安全返回的状态码与公开信息。 */
 class AuthException extends RuntimeException
 {
     public function __construct(

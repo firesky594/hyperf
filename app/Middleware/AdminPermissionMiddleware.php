@@ -13,6 +13,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** 根据路由权限定义实时校验管理员授权，缺少定义时失败关闭。 */
 final class AdminPermissionMiddleware implements MiddlewareInterface
 {
     public function __construct(

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);namespace App\View;
+/** 渲染采购账单、付款凭证、后台确认和供应商结算页面。 */
 final class BillingPageRenderer
 {
  public function buyerInvoices(array$s,array$r,string$c):string{$body=$this->rows($r,'当前没有账单。');foreach($r as$row)$body.='<p><a href="/workspace/buyer/billing/proof?invoice_id='.(int)($row['id']??0).'">为账单 #'.(int)($row['id']??0).' 提交付款凭证</a></p>';return$this->shell('采购账单','<h1>采购账单</h1>'.$body);}

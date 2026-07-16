@@ -9,6 +9,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 
+/** 维护后台角色及其权限集合和启停状态。 */
 class AdminRoleManagementService
 {
     public function __construct(

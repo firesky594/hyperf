@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Service\BusinessIdentitySchemaService;
 use Hyperf\Command\Command;
 
+/** 创建采购方和供应商双侧业务身份数据表。 */
 final class BusinessIdentitySchemaCommand extends Command
 {
     protected ?string $signature = 'uniapi:identity-schema';

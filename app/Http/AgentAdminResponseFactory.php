@@ -19,6 +19,7 @@ use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 use function Hyperf\Support\env;
 
+/** 统一生成后台 HTML、跳转、会话 Cookie 和安全响应头。 */
 class AgentAdminResponseFactory
 {
     private const LOGIN_CSRF_COOKIE = 'agent_admin_login_csrf';

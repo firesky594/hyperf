@@ -22,6 +22,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** 校验后台会话并把管理员登录态注入当前请求。 */
 class AdminAuthMiddleware implements MiddlewareInterface
 {
     public function __construct(

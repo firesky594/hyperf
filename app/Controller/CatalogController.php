@@ -11,6 +11,7 @@ use App\Service\UserIdentityService;
 use App\View\CatalogPageRenderer;
 use Psr\Http\Message\ResponseInterface;
 
+/** 处理供应商 API 商品编辑发布及采购方市场浏览。 */
 final class CatalogController extends AbstractController
 {
     public function __construct(private CatalogService $catalog, private UserIdentityService $identities, private CatalogPageRenderer $pages, private UserPortalResponseFactory $responses) {}

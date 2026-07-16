@@ -15,6 +15,7 @@ namespace App\Exception;
 use RuntimeException;
 use Throwable;
 
+/** 后台认证与授权异常，携带可公开返回的状态码和提示。 */
 class AdminAuthException extends RuntimeException
 {
     public function __construct(

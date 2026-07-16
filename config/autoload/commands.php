@@ -20,6 +20,7 @@ use App\Command\MeteringSchemaCommand;
 use App\Command\BillingSchemaCommand;
 use App\Command\BillingRunCommand;
 
+// 注册 UniAPI 数据结构初始化、管理员初始化、权限同步和账单处理命令。
 return [
     AuthSetupCommand::class,
     AdminSchemaCommand::class,

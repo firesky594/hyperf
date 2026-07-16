@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace App\Service;
 use Hyperf\DbConnection\Db;
+/** 维护应用、访问凭据、API 订阅及额度审计的数据结构。 */
 final class ApplicationSchemaService
 {
  public function __construct(private Db $db){}

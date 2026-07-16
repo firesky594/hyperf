@@ -17,6 +17,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\DbConnection\Db;
 use Throwable;
 
+/** 创建或更新管理员账号，并安全生成和散列初始密码。 */
 class AdminUserProvisioner
 {
     private $passwordHasher;

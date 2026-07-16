@@ -16,6 +16,7 @@ use App\Exception\AdminAuthException;
 use App\Service\AdminUserProvisioner;
 use Hyperf\Command\Command;
 
+/** 初始化后台管理员账号，并按需生成临时密码。 */
 class AdminSetupCommand extends Command
 {
     protected ?string $signature = 'admin:setup';

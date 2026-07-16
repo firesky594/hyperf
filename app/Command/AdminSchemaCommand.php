@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Service\AdminSchemaService;
 use Hyperf\Command\Command;
 
+/** 创建或升级管理员、RBAC 与永久审计所需的数据表。 */
 final class AdminSchemaCommand extends Command
 {
     protected ?string $signature = 'admin:schema';

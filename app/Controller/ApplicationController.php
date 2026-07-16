@@ -7,6 +7,7 @@ use App\Service\ApplicationService;
 use App\Service\UserIdentityService;
 use App\View\ApplicationPageRenderer;
 use Psr\Http\Message\ResponseInterface;
+/** 处理采购方应用、密钥、订阅及供应商额度管理。 */
 final class ApplicationController extends AbstractController
 {
  public function __construct(private ApplicationService$apps,private UserIdentityService$identities,private ApplicationPageRenderer$pages,private UserPortalResponseFactory$responses){}

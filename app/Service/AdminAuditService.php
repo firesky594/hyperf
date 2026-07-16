@@ -8,6 +8,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use JsonException;
 
+/** 写入后台关键操作的结构化永久审计记录。 */
 class AdminAuditService
 {
     private const SENSITIVE_KEYS = [

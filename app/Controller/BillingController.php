@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);namespace App\Controller;
 use App\Exception\AuthException;use App\Http\UserPortalResponseFactory;use App\Service\BillingService;use App\Service\UserIdentityService;use App\View\BillingPageRenderer;use Psr\Http\Message\ResponseInterface;use Psr\Http\Message\UploadedFileInterface;use Throwable;
+/** 提供采购方账单与付款凭证入口，以及供应商结算查询。 */
 final class BillingController extends AbstractController
 {
  public function __construct(private BillingService$billing,private UserIdentityService$identities,private BillingPageRenderer$pages,private UserPortalResponseFactory$responses){}

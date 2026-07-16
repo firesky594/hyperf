@@ -10,6 +10,7 @@ use Psr\Http\Message\ResponseInterface as PsrResponse;
 
 use function Hyperf\Support\env;
 
+/** 统一生成用户门户 HTML、跳转、会话 Cookie 和安全响应头。 */
 class UserPortalResponseFactory
 {
     public function __construct(private ResponseInterface $response) {}

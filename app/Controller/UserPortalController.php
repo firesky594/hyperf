@@ -11,6 +11,7 @@ use App\Service\UserIdentityService;
 use App\View\UserPortalPageRenderer;
 use Psr\Http\Message\ResponseInterface;
 
+/** 处理用户门户登录、工作台和供应商身份申请维护。 */
 final class UserPortalController extends AbstractController
 {
     public function __construct(private AuthService $auth, private UserIdentityService $identities, private UserPortalPageRenderer $pages, private UserPortalResponseFactory $responses) {}

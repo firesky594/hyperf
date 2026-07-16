@@ -13,6 +13,7 @@ use App\Service\AdminUserManagementService;
 use App\View\AgentAdminPageRenderer;
 use Psr\Http\Message\ResponseInterface;
 
+/** 处理后台管理员、角色、权限和菜单的受控写操作。 */
 final class AgentAdminManagementWriteController extends AbstractController
 {
     public function __construct(

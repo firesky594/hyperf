@@ -15,6 +15,7 @@ namespace App\Controller;
 use App\Http\AgentAdminResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 
+/** 将站点根入口统一引导到后台管理员登录页。 */
 class IndexController extends AbstractController
 {
     public function __construct(private AgentAdminResponseFactory $responses)

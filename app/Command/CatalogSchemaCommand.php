@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Service\CatalogSchemaService;
 use Hyperf\Command\Command;
 
+/** 创建 API 商品、版本、端点、文档、价格和价格审计数据表。 */
 final class CatalogSchemaCommand extends Command
 {
     protected ?string $signature = 'uniapi:catalog-schema';

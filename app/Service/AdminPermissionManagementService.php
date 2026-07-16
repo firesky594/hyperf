@@ -9,6 +9,7 @@ use Hyperf\Contract\IdGeneratorInterface;
 use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 
+/** 维护后台自定义权限及系统权限的可编辑属性。 */
 class AdminPermissionManagementService
 {
     public function __construct(private Db $db, private IdGeneratorInterface $ids, private AdminAuditService $audit) {}

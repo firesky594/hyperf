@@ -6,6 +6,7 @@ namespace App\Service;
 
 use Hyperf\DbConnection\Db;
 
+/** 根据管理员角色与权限状态执行后台服务端授权。 */
 class AdminAuthorizationService
 {
     public function __construct(private Db $db)

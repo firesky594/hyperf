@@ -10,6 +10,7 @@ use Hyperf\Redis\Redis;
 use RuntimeException;
 use Throwable;
 
+/** 并发探测 MySQL 与 Redis，用于验证本地运行环境连接状态。 */
 class DemoConcurrentService
 {
     private const REDIS_KEY = 'demo:concurrent:counter';

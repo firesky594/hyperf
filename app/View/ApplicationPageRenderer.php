@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace App\View;
+/** 渲染采购方应用、一次性密钥、订阅和供应商额度页面。 */
 final class ApplicationPageRenderer
 {
  /** @param array<string,mixed>$s @param list<array<string,mixed>>$rows */

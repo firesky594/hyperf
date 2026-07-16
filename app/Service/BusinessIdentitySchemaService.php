@@ -6,6 +6,7 @@ namespace App\Service;
 
 use Hyperf\DbConnection\Db;
 
+/** 维护采购方与供应商业务身份的数据结构。 */
 class BusinessIdentitySchemaService
 {
     public function __construct(private Db $db) {}
