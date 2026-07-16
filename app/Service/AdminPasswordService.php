@@ -16,7 +16,15 @@ class AdminPasswordService
 
     private $passwordHasher;
 
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @param AdminAuthService $auth 注入的 AdminAuthService 依赖。
+     * @param ?callable $passwordVerifier 用于执行指定处理逻辑的回调。
+     * @param ?callable $passwordHasher 用于安全校验的哈希值。
+     * @return void 无返回值。
+     */
     public function __construct(
         private Db $db,
         private AdminAuthService $auth,
@@ -29,7 +37,16 @@ class AdminPasswordService
             ?? static fn (string $password): string => password_hash($password, PASSWORD_ARGON2ID);
     }
 
-    /** 修改 `changePassword` 方法对应的数据或业务状态。 */
+    /**
+     * 修改密码。
+     *
+     * @param int $adminId 对应业务记录的唯一标识。
+     * @param string $currentPassword 当前值密码字符串。
+     * @param string $newPassword new密码字符串。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
+     */
     public function changePassword(int $adminId, string $currentPassword, string $newPassword): void
     {
         if (

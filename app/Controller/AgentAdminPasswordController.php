@@ -13,7 +13,14 @@ use Psr\Http\Message\ResponseInterface;
 /** 提供管理员密码修改页面并处理强制改密。 */
 class AgentAdminPasswordController extends AbstractController
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param AdminPasswordService $passwords 注入的 AdminPasswordService 依赖。
+     * @param AgentAdminPageRenderer $pages 注入的 AgentAdminPageRenderer 依赖。
+     * @param AgentAdminResponseFactory $responses 注入的 AgentAdminResponseFactory 依赖。
+     * @return void 无返回值。
+     */
     public function __construct(
         private AdminPasswordService $passwords,
         private AgentAdminPageRenderer $pages,
@@ -21,7 +28,11 @@ class AgentAdminPasswordController extends AbstractController
     ) {
     }
 
-    /** 渲染当前功能页面。 */
+    /**
+     * 渲染当前功能页面。
+     *
+     * @return ResponseInterface 当前请求对应的 HTTP 响应。
+     */
     public function page(): ResponseInterface
     {
         $session = $this->session();
@@ -32,7 +43,12 @@ class AgentAdminPasswordController extends AbstractController
         ));
     }
 
-    /** 修改 `change` 方法对应的数据或业务状态。 */
+    /**
+     * 处理change。
+     *
+     * @return ResponseInterface 当前请求对应的 HTTP 响应。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function change(): ResponseInterface
     {
         $session = $this->session();
@@ -66,7 +82,8 @@ class AgentAdminPasswordController extends AbstractController
 
     /**
      * 读取并校验当前请求的会话数据。
-     * @return array<string,mixed>
+     *
+     * @return array<string,mixed> 返回会话结构化数据。
      */
     private function session(): array
     {
@@ -76,8 +93,11 @@ class AgentAdminPasswordController extends AbstractController
     }
 
     /**
-     * 校验 `validateCsrf` 方法对应的数据或业务状态。
-     * @param array<string,mixed> $session
+     * 校验CSRF。
+     *
+     * @param array<string,mixed> $session 当前登录会话数据。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
      */
     private function validateCsrf(array $session): void
     {

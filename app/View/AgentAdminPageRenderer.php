@@ -20,7 +20,14 @@ class AgentAdminPageRenderer
 {
     private const TIMEZONE = 'Asia/Shanghai';
 
-    /** 校验凭据并建立登录会话。 */
+    /**
+     * 校验凭据并建立登录会话。
+     *
+     * @param string $csrfToken 用于防止跨站请求伪造的令牌。
+     * @param string $username 登录用户名。
+     * @param string $error 需要在页面展示的错误提示。
+     * @return string 返回登录字符串结果。
+     */
     public function login(string $csrfToken, string $username = '', string $error = ''): string
     {
         $csrfToken = $this->escape($csrfToken);
@@ -110,8 +117,10 @@ HTML;
     }
 
     /**
-     * 执行 `home` 方法对应的业务处理。
-     * @param array{admin_id?: mixed, username?: mixed, issued_at?: mixed, expires_at?: mixed, csrf_token?: mixed} $session
+     * 处理首页。
+     *
+     * @param array $session 当前登录会话数据。
+     * @return string 返回首页字符串结果。
      */
     public function home(array $session): string
     {
@@ -283,8 +292,13 @@ HTML;
     }
 
     /**
-     * 执行 `management` 方法对应的业务处理。
-     * @param array{admin_id?: mixed, username?: mixed, csrf_token?: mixed} $session
+     * 处理管理功能。
+     *
+     * @param string $module 后台管理模块标识。
+     * @param array $session 当前登录会话数据。
+     * @param array $rows 数据库查询结果列表。
+     * @return string 返回管理功能字符串结果。
+     * @throws \InvalidArgumentException 传入参数不符合约束时抛出。
      */
     public function management(string $module, array $session, array $rows = []): string
     {
@@ -352,7 +366,14 @@ HTML;
 HTML;
     }
 
-    /** 执行 `managementContent` 方法对应的业务处理。 @param list<array<string,mixed>> $rows */
+    /**
+     * 处理管理功能内容。
+     *
+     * @param string $module 后台管理模块标识。
+     * @param list<array<string,mixed>> $rows 数据库查询结果列表。
+     * @param string $csrfToken 用于防止跨站请求伪造的令牌。
+     * @return string 返回管理功能内容字符串结果。
+     */
     private function managementContent(string $module, array $rows, string $csrfToken): string
     {
         $actions = [
@@ -386,7 +407,14 @@ HTML;
         return '<section class="management-data" aria-labelledby="data-heading"><div><p class="eyebrow">LIVE DATABASE</p><h2 id="data-heading">管理数据</h2></div>' . $form . '<div class="data-list">' . $items . '</div></section>';
     }
 
-    /** 执行 `managementRowActions` 方法对应的业务处理。 @param array<string,mixed> $row */
+    /**
+     * 处理管理功能单条结果Actions。
+     *
+     * @param string $module 后台管理模块标识。
+     * @param array<string,mixed> $row 单条数据库查询结果。
+     * @param string $csrf 用于防止跨站请求伪造的令牌。
+     * @return string 返回管理功能单条结果Actions字符串结果。
+     */
     private function managementRowActions(string $module, array $row, string $csrf): string
     {
         if ($module === 'audit') { return ''; }
@@ -402,13 +430,25 @@ HTML;
         return '<div class="row-actions">' . $update . $status . '</div>';
     }
 
-    /** 执行 `unavailable` 方法对应的业务处理。 */
+    /**
+     * 创建后台服务不可用异常。
+     *
+     * @param string $message 可安全返回给调用方的提示信息。
+     * @return string 返回unavailable字符串结果。
+     */
     public function unavailable(string $message = '后台服务暂时不可用，请稍后再试。'): string
     {
         return $this->error(503, $message);
     }
 
-    /** 执行 `password` 方法对应的业务处理。 */
+    /**
+     * 处理密码。
+     *
+     * @param string $csrfToken 用于防止跨站请求伪造的令牌。
+     * @param bool $forced 是否处于强制修改密码状态。
+     * @param string $error 需要在页面展示的错误提示。
+     * @return string 返回密码字符串结果。
+     */
     public function password(string $csrfToken, bool $forced, string $error = ''): string
     {
         $csrfToken = $this->escape($csrfToken);
@@ -453,7 +493,13 @@ HTML;
 HTML;
     }
 
-    /** 执行 `error` 方法对应的业务处理。 */
+    /**
+     * 处理错误页面。
+     *
+     * @param int $status 目标业务状态。
+     * @param string $message 可安全返回给调用方的提示信息。
+     * @return string 返回错误页面字符串结果。
+     */
     public function error(int $status, string $message): string
     {
         $message = $this->escape($message);
@@ -497,13 +543,23 @@ HTML;
 HTML;
     }
 
-    /** 转义 `escape` 方法对应的数据或业务状态。 */
+    /**
+     * 处理escape。
+     *
+     * @param string $value 待写入或校验的值。
+     * @return string 返回escape字符串结果。
+     */
     private function escape(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    /** 执行 `managementNavigation` 方法对应的业务处理。 */
+    /**
+     * 处理管理功能Navigation。
+     *
+     * @param string $active 当前激活的导航项。
+     * @return string 返回管理功能Navigation字符串结果。
+     */
     private function managementNavigation(string $active): string
     {
         $items = [
@@ -524,7 +580,12 @@ HTML;
         return $html;
     }
 
-    /** 格式化 `formatTimestamp` 方法对应的数据或业务状态。 */
+    /**
+     * 格式化timestamp。
+     *
+     * @param int $timestamp 请求时间戳。
+     * @return string 返回formatTimestamp字符串结果。
+     */
     private function formatTimestamp(int $timestamp): string
     {
         return (new DateTimeImmutable('@' . $timestamp))
@@ -532,7 +593,11 @@ HTML;
             ->format('Y-m-d H:i:s');
     }
 
-    /** 执行 `styles` 方法对应的业务处理。 */
+    /**
+     * 处理styles。
+     *
+     * @return string 返回styles字符串结果。
+     */
     private function styles(): string
     {
         return <<<'CSS'

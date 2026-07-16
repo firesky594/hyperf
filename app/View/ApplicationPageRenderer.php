@@ -4,15 +4,54 @@ namespace App\View;
 /** 渲染采购方应用、一次性密钥、订阅和供应商额度页面。 */
 final class ApplicationPageRenderer
 {
- /** 查询采购方的应用列表。 @param array<string,mixed>$s @param list<array<string,mixed>>$rows */
+ /**
+  * 查询采购方的应用列表。
+  *
+  * @param array $s 当前登录会话数据。
+  * @param array $rows 数据库查询结果列表。
+  * @param string $csrf 用于防止跨站请求伪造的令牌。
+  * @return string 返回应用列表字符串结果。
+  */
  public function applications(array$s,array$rows,string$csrf):string{$items='';foreach($rows as$r)$items.='<article><h2>'.$this->e((string)$r['name']).'</h2><form action="/workspace/buyer/apps/reset" method="post"><input type="hidden" name="_csrf" value="'.$this->e($csrf).'"><input type="hidden" name="application_id" value="'.(int)$r['id'].'"><button>重置密钥</button></form></article>';$items=$items===''?'<p>当前还没有应用。</p>':$items;return$this->shell('应用与密钥','<h1>应用与密钥</h1><nav><a href="/workspace/buyer/subscriptions">订阅管理</a></nav><form action="/workspace/buyer/apps/create" method="post"><input type="hidden" name="_csrf" value="'.$this->e($csrf).'"><label>应用名称<input name="name" required></label><button>创建应用并生成密钥</button></form>'.$items);}
- /** 执行 `secret` 方法对应的业务处理。 @param array<string,mixed>$s */
+ /**
+  * 处理密钥。
+  *
+  * @param array $s 当前登录会话数据。
+  * @param string $secret 用于签名或鉴权的密钥。
+  * @param string $back 完成操作后的返回地址。
+  * @return string 返回密钥字符串结果。
+  */
 public function secret(array$s,string$secret,string$back):string{return$this->shell('一次性密钥','<h1>密钥仅显示一次</h1><p>请立即安全保存，离开后无法再次查看。</p><code>'.$this->e($secret).'</code><p><a href="'.$this->e($back).'">我已保存</a></p>');}
- /** 查询采购方的 API 订阅列表。 @param array<string,mixed>$s @param list<array<string,mixed>>$rows */
+ /**
+  * 查询采购方的 API 订阅列表。
+  *
+  * @param array $s 当前登录会话数据。
+  * @param array $rows 数据库查询结果列表。
+  * @param string $csrf 用于防止跨站请求伪造的令牌。
+  * @return string 返回订阅列表字符串结果。
+  */
 public function subscriptions(array$s,array$rows,string$csrf):string{$items='';foreach($rows as$r)$items.='<article><h2>'.$this->e((string)$r['api_name']).'</h2><p>'.$this->e((string)$r['application_name']).' / QPS '.(int)$r['qps_limit'].' / 周期额度 '.(int)$r['period_limit'].'</p></article>';return$this->shell('订阅管理','<h1>订阅管理</h1><form action="/workspace/buyer/subscriptions/create" method="post"><input type="hidden" name="_csrf" value="'.$this->e($csrf).'"><label>应用 ID<input name="application_id" required></label><label>API 商品 ID<input name="product_id" required></label><button>开通 API</button></form>'.($items===''?'<p>当前没有订阅。</p>':$items));}
- /** 查询供应商可管理的订阅额度。 @param array<string,mixed>$s @param list<array<string,mixed>>$rows */
+ /**
+  * 查询供应商可管理的订阅额度。
+  *
+  * @param array $s 当前登录会话数据。
+  * @param array $rows 数据库查询结果列表。
+  * @param string $csrf 用于防止跨站请求伪造的令牌。
+  * @return string 返回额度列表字符串结果。
+  */
 public function quotas(array$s,array$rows,string$csrf):string{$items='';foreach($rows as$r)$items.='<form action="/workspace/supplier/quotas/update" method="post"><input type="hidden" name="_csrf" value="'.$this->e($csrf).'"><input type="hidden" name="subscription_id" value="'.(int)$r['subscription_id'].'"><strong>'.$this->e((string)$r['api_name']).' / '.$this->e((string)$r['application_name']).'</strong><label>QPS<input name="qps_limit" value="'.(int)$r['qps_limit'].'"></label><label>周期额度<input name="period_limit" value="'.(int)$r['period_limit'].'"></label><button>保存额度</button></form>';return$this->shell('额度管理','<h1>采购方额度管理</h1>'.($items===''?'<p>当前没有可调整额度的采购方。</p>':$items));}
- /** 转义 HTML 特殊字符，防止页面注入。 */
- private function e(string$v):string{return htmlspecialchars($v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}/** 组装包含公共结构和样式的完整页面。 */
+ /**
+  * 转义 HTML 特殊字符，防止页面注入。
+  *
+  * @param string $v 待转义或处理的字符串值。
+  * @return string 返回e字符串结果。
+  */
+ private function e(string$v):string{return htmlspecialchars($v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}/**
+ * 组装包含公共结构和样式的完整页面。
+ *
+ * @param string $t 页面标题。
+ * @param string $b 页面主体 HTML。
+ * @return string 返回shell字符串结果。
+ */
 private function shell(string$t,string$b):string{return'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.$this->e($t).' · UniAPI</title><style>body{margin:0;padding:6vw;background:#071012;color:#edf7f4;font:16px system-ui}main{max-width:900px;margin:auto}h1{font-size:clamp(40px,8vw,72px)}form{display:grid;gap:14px;padding:24px;border:1px solid #294642}input,button{padding:12px;background:#10201e;color:#fff;border:1px solid #45e0c3}code{display:block;padding:20px;overflow-wrap:anywhere;color:#45e0c3}</style></head><body><main>'.$b.'</main></body></html>';}
 }

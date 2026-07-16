@@ -150,7 +150,18 @@ LUA;
 
     private $clock;
 
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @param Redis $redis Redis 客户端实例。
+     * @param ?int $tokenTtl 传入的 ?int 实例，用于初始化当前组件所需的依赖。
+     * @param ?int $maxAttempts 传入的 ?int 实例，用于初始化当前组件所需的依赖。
+     * @param ?int $loginWindow 传入的 ?int 实例，用于初始化当前组件所需的依赖。
+     * @param ?callable $passwordVerifier 用于执行指定处理逻辑的回调。
+     * @param ?callable $clock 用于执行指定处理逻辑的回调。
+     * @return void 无返回值。
+     */
     public function __construct(
         private Db $db,
         private Redis $redis,
@@ -170,11 +181,13 @@ LUA;
 
     /**
      * 校验凭据并建立登录会话。
-     * @return array{
-     *     token:string,
-     *     expires_in:int,
-     *     session:array{admin_id:int,username:string,issued_at:int,expires_at:int,csrf_token:string}
-     * }
+     *
+     * @param string $username 登录用户名。
+     * @param string $password 登录密码明文。
+     * @param string $clientIp clientIp字符串。
+     * @return array{ 返回登录结构化数据。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
      */
     public function login(string $username, string $password, string $clientIp): array
     {
@@ -268,8 +281,12 @@ LUA;
     }
 
     /**
-     * 执行 `resolveSession` 方法对应的业务处理。
-     * @return null|array{admin_id:int,username:string,issued_at:int,expires_at:int,csrf_token:string}
+     * 解析会话。
+     *
+     * @param string $token 待校验或撤销的访问令牌。
+     * @return null|array{admin_id:int,username:string,issued_at:int,expires_at:int,csrf_token:string} 查询成功时返回对应数据，不存在时返回 null。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
      */
     public function resolveSession(string $token): ?array
     {
@@ -313,7 +330,14 @@ LUA;
         }
     }
 
-    /** 注销当前登录会话。 */
+    /**
+     * 注销当前登录会话。
+     *
+     * @param string $token 待校验或撤销的访问令牌。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
+     */
     public function logout(string $token): void
     {
         try {
@@ -328,7 +352,14 @@ LUA;
         }
     }
 
-    /** 撤销 `revokeAdminSessions` 方法对应的数据或业务状态。 */
+    /**
+     * 撤销管理员Sessions。
+     *
+     * @param int $adminId 对应业务记录的唯一标识。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
+     */
     public function revokeAdminSessions(int $adminId): void
     {
         if ($adminId <= 0) {
@@ -366,8 +397,12 @@ LUA;
     }
 
     /**
-     * 执行 `authenticateInTransaction` 方法对应的业务处理。
-     * @return array<string,mixed>
+     * 处理authenticateInTransaction。
+     *
+     * @param string $username 登录用户名。
+     * @param string $password 登录密码明文。
+     * @return array<string,mixed> 返回authenticateInTransaction结构化数据。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
      */
     private function authenticateInTransaction(string $username, string $password): array
     {
@@ -412,8 +447,11 @@ LUA;
     }
 
     /**
-     * 查询 `findUser` 方法对应的数据或业务状态。
-     * @return null|array<string,mixed>
+     * 查询用户。
+     *
+     * @param ConnectionInterface $connection 传入的 ConnectionInterface 实例，用于查询用户。
+     * @param string $username 登录用户名。
+     * @return null|array<string,mixed> 查询成功时返回对应数据，不存在时返回 null。
      */
     private function findUser(ConnectionInterface $connection, string $username): ?array
     {
@@ -426,7 +464,15 @@ LUA;
         return is_array($user) ? $user : null;
     }
 
-    /** 执行 `reserveAttempt` 方法对应的业务处理。 */
+    /**
+     * 处理reserveAttempt。
+     *
+     * @param string $failureKey failure键名字符串。
+     * @param string $activeReservationKey activeReservation键名字符串。
+     * @param string $reservationId 对应业务记录的唯一标识。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function reserveAttempt(string $failureKey, string $activeReservationKey, string $reservationId): void
     {
         $result = $this->redis->eval(
@@ -449,7 +495,15 @@ LUA;
         }
     }
 
-    /** 执行 `finalizeFailure` 方法对应的业务处理。 */
+    /**
+     * 处理finalizeFailure。
+     *
+     * @param string $failureKey failure键名字符串。
+     * @param string $activeReservationKey activeReservation键名字符串。
+     * @param string $reservationId 对应业务记录的唯一标识。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function finalizeFailure(
         string $failureKey,
         string $activeReservationKey,
@@ -471,7 +525,14 @@ LUA;
         }
     }
 
-    /** 执行 `releaseAttempt` 方法对应的业务处理。 */
+    /**
+     * 处理releaseAttempt。
+     *
+     * @param string $activeReservationKey activeReservation键名字符串。
+     * @param string $reservationId 对应业务记录的唯一标识。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function releaseAttempt(string $activeReservationKey, string $reservationId): void
     {
         $result = $this->redis->eval(
@@ -484,7 +545,15 @@ LUA;
         }
     }
 
-    /** 执行 `clearAttemptsAfterSuccess` 方法对应的业务处理。 */
+    /**
+     * 处理clearAttemptsAfterSuccess。
+     *
+     * @param string $failureKey failure键名字符串。
+     * @param string $activeReservationKey activeReservation键名字符串。
+     * @param string $reservationId 对应业务记录的唯一标识。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function clearAttemptsAfterSuccess(
         string $failureKey,
         string $activeReservationKey,
@@ -500,7 +569,14 @@ LUA;
         }
     }
 
-    /** 执行 `bestEffortFinalizeFailure` 方法对应的业务处理。 */
+    /**
+     * 处理bestEffortFinalizeFailure。
+     *
+     * @param string $failureKey failure键名字符串。
+     * @param string $activeReservationKey activeReservation键名字符串。
+     * @param string $reservationId 对应业务记录的唯一标识。
+     * @return void 无返回值。
+     */
     private function bestEffortFinalizeFailure(
         string $failureKey,
         string $activeReservationKey,
@@ -512,7 +588,13 @@ LUA;
         }
     }
 
-    /** 执行 `bestEffortRelease` 方法对应的业务处理。 */
+    /**
+     * 处理bestEffortRelease。
+     *
+     * @param string $activeReservationKey activeReservation键名字符串。
+     * @param string $reservationId 对应业务记录的唯一标识。
+     * @return void 无返回值。
+     */
     private function bestEffortRelease(string $activeReservationKey, string $reservationId): void
     {
         try {
@@ -521,7 +603,12 @@ LUA;
         }
     }
 
-    /** 执行 `bestEffortDeleteSession` 方法对应的业务处理。 */
+    /**
+     * 处理bestEffortDelete会话。
+     *
+     * @param string $key 缓存、锁或凭据键。
+     * @return void 无返回值。
+     */
     private function bestEffortDeleteSession(string $key): void
     {
         try {
@@ -530,7 +617,13 @@ LUA;
         }
     }
 
-    /** 执行 `bestEffortRemoveSessionFromRegistry` 方法对应的业务处理。 */
+    /**
+     * 处理bestEffortRemove会话FromRegistry。
+     *
+     * @param string $registryKey registry键名字符串。
+     * @param string $sessionKey 会话键名字符串。
+     * @return void 无返回值。
+     */
     private function bestEffortRemoveSessionFromRegistry(string $registryKey, string $sessionKey): void
     {
         try {
@@ -539,25 +632,48 @@ LUA;
         }
     }
 
-    /** 执行 `sessionKey` 方法对应的业务处理。 */
+    /**
+     * 处理会话键名。
+     *
+     * @param string $token 待校验或撤销的访问令牌。
+     * @return string 返回会话键名字符串结果。
+     */
     private function sessionKey(string $token): string
     {
         return self::SESSION_PREFIX . hash('sha256', $token);
     }
 
-    /** 执行 `failureKey` 方法对应的业务处理。 */
+    /**
+     * 处理failure键名。
+     *
+     * @param string $username 登录用户名。
+     * @param string $clientIp clientIp字符串。
+     * @return string 返回failure键名字符串结果。
+     */
     private function failureKey(string $username, string $clientIp): string
     {
         return self::FAILURE_PREFIX . hash('sha256', strtolower($username) . chr(0) . $clientIp);
     }
 
-    /** 执行 `activeReservationKey` 方法对应的业务处理。 */
+    /**
+     * 处理activeReservation键名。
+     *
+     * @param string $failureKey failure键名字符串。
+     * @return string 返回activeReservation键名字符串结果。
+     */
     private function activeReservationKey(string $failureKey): string
     {
         return $failureKey . ':active';
     }
 
-    /** 校验 `validateLoginInput` 方法对应的数据或业务状态。 */
+    /**
+     * 校验登录输入参数。
+     *
+     * @param string $username 登录用户名。
+     * @param string $password 登录密码明文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function validateLoginInput(string $username, string $password): void
     {
         if (
@@ -569,7 +685,13 @@ LUA;
         }
     }
 
-    /** 删除 `deleteSession` 方法对应的数据或业务状态。 */
+    /**
+     * 删除会话。
+     *
+     * @param string $key 缓存、锁或凭据键。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function deleteSession(string $key): void
     {
         if ($this->redis->del($key) === false) {
@@ -577,7 +699,13 @@ LUA;
         }
     }
 
-    /** 判断 `isValidSession` 方法对应的数据或业务状态。 */
+    /**
+     * 判断valid会话。
+     *
+     * @param mixed $session 当前登录会话数据。
+     * @param int $now now数值。
+     * @return bool 条件满足时返回 true，否则返回 false。
+     */
     private function isValidSession(mixed $session, int $now): bool
     {
         if (! is_array($session) || count($session) !== 7) {

@@ -13,7 +13,14 @@ use Hyperf\DbConnection\Db;
 /** 将代码内权限定义同步到数据库并保护系统权限边界。 */
 class AdminPermissionService
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @param AdminRouteRegistry $routes 注入的 AdminRouteRegistry 依赖。
+     * @param IdGeneratorInterface $ids 注入的 IdGeneratorInterface 依赖。
+     * @return void 无返回值。
+     */
     public function __construct(
         private Db $db,
         private AdminRouteRegistry $routes,
@@ -22,8 +29,9 @@ class AdminPermissionService
     }
 
     /**
-     * 同步 `syncSystemPermissions` 方法对应的数据或业务状态。
-     * @return array{created: int, restored: int, disabled: int, skipped_custom: int}
+     * 同步system权限列表。
+     *
+     * @return array{created: 返回syncSystem权限列表结构化数据。
      */
     public function syncSystemPermissions(): array
     {
@@ -83,7 +91,13 @@ class AdminPermissionService
         });
     }
 
-    /** 执行 `insertSystemPermission` 方法对应的业务处理。 */
+    /**
+     * 处理insertSystem权限。
+     *
+     * @param ConnectionInterface $connection 传入的 ConnectionInterface 实例，用于处理insertSystem权限。
+     * @param AdminRouteDefinition $definition 传入的 AdminRouteDefinition 实例，用于处理insertSystem权限。
+     * @return void 无返回值。
+     */
     private function insertSystemPermission(ConnectionInterface $connection, AdminRouteDefinition $definition): void
     {
         $connection->insert(

@@ -12,7 +12,14 @@ use Hyperf\DbConnection\Db;
 /** 维护后台角色及其权限集合和启停状态。 */
 class AdminRoleManagementService
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @param IdGeneratorInterface $ids 注入的 IdGeneratorInterface 依赖。
+     * @param AdminAuditService $audit 注入的 AdminAuditService 依赖。
+     * @return void 无返回值。
+     */
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $ids,
@@ -20,7 +27,11 @@ class AdminRoleManagementService
     ) {
     }
 
-    /** 查询 `listRoles` 方法对应的数据或业务状态。 @return list<array<string,mixed>> */
+    /**
+     * 查询角色列表。
+     *
+     * @return list<array<string,mixed>> 返回list角色列表结构化数据。
+     */
     public function listRoles(): array
     {
         $rows = $this->db->select(<<<'SQL'
@@ -46,7 +57,16 @@ SQL);
         }, $rows);
     }
 
-    /** 创建 `createRole` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
+    /**
+     * 创建角色。
+     *
+     * @param string $name 业务对象名称。
+     * @param string $code code字符串。
+     * @param string $description description字符串。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return int 返回create角色整数结果。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function createRole(string $name, string $code, string $description, array $auditContext): int
     {
         [$name, $code, $description] = $this->validatedRoleFields($name, $code, $description);
@@ -81,7 +101,17 @@ SQL);
         });
     }
 
-    /** 更新 `updateRole` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
+    /**
+     * 更新角色。
+     *
+     * @param int $roleId 对应业务记录的唯一标识。
+     * @param string $name 业务对象名称。
+     * @param string $code code字符串。
+     * @param string $description description字符串。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function updateRole(
         int $roleId,
         string $name,
@@ -123,7 +153,15 @@ SQL);
         });
     }
 
-    /** 设置 `setStatus` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
+    /**
+     * 设置状态。
+     *
+     * @param int $roleId 对应业务记录的唯一标识。
+     * @param bool $enabled 控制enabled行为的布尔标记。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function setStatus(int $roleId, bool $enabled, array $auditContext): void
     {
         if ($roleId <= 0) {
@@ -148,7 +186,15 @@ SQL);
         });
     }
 
-    /** 执行 `assignPermissions` 方法对应的业务处理。 @param list<int> $permissionIds @param array<string,mixed> $auditContext */
+    /**
+     * 分配权限列表。
+     *
+     * @param int $roleId 对应业务记录的唯一标识。
+     * @param list<int> $permissionIds 待关联业务记录的唯一标识列表。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function assignPermissions(int $roleId, array $permissionIds, array $auditContext): void
     {
         $permissionIds = array_values(array_unique(array_map('intval', $permissionIds)));
@@ -197,7 +243,14 @@ SQL);
         });
     }
 
-    /** 执行 `lockedRole` 方法对应的业务处理。 */
+    /**
+     * 处理locked角色。
+     *
+     * @param ConnectionInterface $connection 传入的 ConnectionInterface 实例，用于处理locked角色。
+     * @param int $roleId 对应业务记录的唯一标识。
+     * @return object 返回locked角色处理结果。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function lockedRole(ConnectionInterface $connection, int $roleId): object
     {
         $role = $connection->selectOne(
@@ -211,7 +264,15 @@ SQL);
         return $role;
     }
 
-    /** 校验 `validatedRoleFields` 方法对应的数据或业务状态。 @return array{string,string,string} */
+    /**
+     * 校验d角色字段。
+     *
+     * @param string $name 业务对象名称。
+     * @param string $code code字符串。
+     * @param string $description description字符串。
+     * @return array{string,string,string} 返回validated角色字段结构化数据。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function validatedRoleFields(string $name, string $code, string $description): array
     {
         $name = trim($name);
@@ -227,10 +288,13 @@ SQL);
     }
 
     /**
-     * 执行 `event` 方法对应的业务处理。
-     * @param array<string,mixed> $context
-     * @param array<string,mixed> $requestData
-     * @return array<string,mixed>
+     * 处理事件。
+     *
+     * @param array<string,mixed> $context 当前操作的审计上下文。
+     * @param string $action 待执行的操作标识。
+     * @param int $targetId 对应业务记录的唯一标识。
+     * @param array<string,mixed> $requestData request业务数据数据集合。
+     * @return array<string,mixed> 返回事件结构化数据。
      */
     private function event(array $context, string $action, int $targetId, array $requestData): array
     {

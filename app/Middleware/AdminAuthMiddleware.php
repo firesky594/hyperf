@@ -25,7 +25,15 @@ use Psr\Http\Server\RequestHandlerInterface;
 /** 校验后台会话并把管理员登录态注入当前请求。 */
 class AdminAuthMiddleware implements MiddlewareInterface
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param AdminAuthService $auth 注入的 AdminAuthService 依赖。
+     * @param AgentAdminPageRenderer $pages 注入的 AgentAdminPageRenderer 依赖。
+     * @param AgentAdminResponseFactory $responses 注入的 AgentAdminResponseFactory 依赖。
+     * @param StdoutLoggerInterface $logger 日志记录器。
+     * @return void 无返回值。
+     */
     public function __construct(
         private AdminAuthService $auth,
         private AgentAdminPageRenderer $pages,
@@ -34,7 +42,13 @@ class AdminAuthMiddleware implements MiddlewareInterface
     ) {
     }
 
-    /** 处理监听到的事件。 */
+    /**
+     * 处理监听到的事件。
+     *
+     * @param ServerRequestInterface $request 当前 HTTP 请求。
+     * @param RequestHandlerInterface $handler 后续请求处理器。
+     * @return ResponseInterface 当前请求对应的 HTTP 响应。
+     */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $rawToken = $request->getCookieParams()['agent_admin_session'] ?? '';
@@ -64,7 +78,12 @@ class AdminAuthMiddleware implements MiddlewareInterface
         }
     }
 
-    /** 执行 `logInfrastructureFailure` 方法对应的业务处理。 */
+    /**
+     * 处理log基础设施异常Failure。
+     *
+     * @param AdminAuthException $exception 传入的 AdminAuthException 实例，用于处理log基础设施异常Failure。
+     * @return void 无返回值。
+     */
     private function logInfrastructureFailure(AdminAuthException $exception): void
     {
         if ($exception->status() !== 503) {

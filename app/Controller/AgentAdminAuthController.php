@@ -22,7 +22,15 @@ use Psr\Http\Message\ResponseInterface;
 /** 处理后台管理员登录、退出与会话 Cookie。 */
 class AgentAdminAuthController extends AbstractController
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param AdminAuthService $auth 注入的 AdminAuthService 依赖。
+     * @param AgentAdminPageRenderer $pages 注入的 AgentAdminPageRenderer 依赖。
+     * @param AgentAdminResponseFactory $responses 注入的 AgentAdminResponseFactory 依赖。
+     * @param StdoutLoggerInterface $logger 日志记录器。
+     * @return void 无返回值。
+     */
     public function __construct(
         private AdminAuthService $auth,
         private AgentAdminPageRenderer $pages,
@@ -31,7 +39,11 @@ class AgentAdminAuthController extends AbstractController
     ) {
     }
 
-    /** 渲染登录页面。 */
+    /**
+     * 渲染登录页面。
+     *
+     * @return ResponseInterface 当前请求对应的 HTTP 响应。
+     */
     public function loginPage(): ResponseInterface
     {
         $rawSessionToken = $this->request->getCookieParams()['agent_admin_session'] ?? '';
@@ -55,7 +67,12 @@ class AgentAdminAuthController extends AbstractController
         );
     }
 
-    /** 校验凭据并建立登录会话。 */
+    /**
+     * 校验凭据并建立登录会话。
+     *
+     * @return ResponseInterface 当前请求对应的 HTTP 响应。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function login(): ResponseInterface
     {
         $rawUsername = $this->request->input('username', '');
@@ -112,7 +129,12 @@ class AgentAdminAuthController extends AbstractController
         }
     }
 
-    /** 注销当前登录会话。 */
+    /**
+     * 注销当前登录会话。
+     *
+     * @return ResponseInterface 当前请求对应的 HTTP 响应。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function logout(): ResponseInterface
     {
         try {
@@ -138,13 +160,23 @@ class AgentAdminAuthController extends AbstractController
         }
     }
 
-    /** 执行 `newFormToken` 方法对应的业务处理。 */
+    /**
+     * 生成新的表单令牌。
+     *
+     * @return string 返回new表单令牌字符串结果。
+     */
     private function newFormToken(): string
     {
         return bin2hex(random_bytes(32));
     }
 
-    /** 执行 `errorPage` 方法对应的业务处理。 */
+    /**
+     * 处理错误页面页面。
+     *
+     * @param AdminAuthException $exception 传入的 AdminAuthException 实例，用于处理错误页面页面。
+     * @param string $event 当前监听到的事件对象。
+     * @return ResponseInterface 当前请求对应的 HTTP 响应。
+     */
     private function errorPage(AdminAuthException $exception, string $event): ResponseInterface
     {
         $this->logInfrastructureFailure($exception, $event);
@@ -155,7 +187,14 @@ class AgentAdminAuthController extends AbstractController
         );
     }
 
-    /** 校验 `validateLoginInput` 方法对应的数据或业务状态。 */
+    /**
+     * 校验登录输入参数。
+     *
+     * @param string $username 登录用户名。
+     * @param string $password 登录密码明文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function validateLoginInput(string $username, string $password): void
     {
         if (
@@ -167,7 +206,13 @@ class AgentAdminAuthController extends AbstractController
         }
     }
 
-    /** 执行 `logInfrastructureFailure` 方法对应的业务处理。 */
+    /**
+     * 处理log基础设施异常Failure。
+     *
+     * @param AdminAuthException $exception 传入的 AdminAuthException 实例，用于处理log基础设施异常Failure。
+     * @param string $event 当前监听到的事件对象。
+     * @return void 无返回值。
+     */
     private function logInfrastructureFailure(AdminAuthException $exception, string $event): void
     {
         if ($exception->status() !== 503) {

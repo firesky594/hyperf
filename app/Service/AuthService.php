@@ -36,6 +36,7 @@ class AuthService
      * @param null|int $tokenTtl 登录 token 缓存秒数；为空时读取 AUTH_TOKEN_TTL，默认 7200 秒。
      * @param null|int $lockTtl Redis 锁过期秒数；为空时读取 AUTH_LOCK_TTL，默认 10 秒。
      * @param null|callable $passwordHasher 密码 hash 函数；测试可传入轻量 hash，生产默认使用 password_hash。
+     * @return void 无返回值。
      */
     public function __construct(
         private Db $db,
@@ -63,6 +64,8 @@ class AuthService
      * @param string $password 登录密码；方法内部会 trim 检查是否为空，但校验密码时保留原值。
      * @return array{token:string,token_type:string,expires_in:int,user:array{id:int,username:string}} 登录 token 和用户基础信息。
      * @throws AuthException 参数为空、凭据错误、并发登录冲突或认证基础设施异常时抛出。
+     * @throws \App\Exception\AuthException 认证、授权或业务校验失败时抛出。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
      */
     public function login(string $username, string $password): array
     {
@@ -114,7 +117,7 @@ class AuthService
     }
 
     /**
-     * 执行 `registerRandom` 方法对应的业务处理。
+     * 处理register随机数据。
      * 注册单个随机测试用户。
      *
      * 该方法每次只生成 1 个测试用户，同步写入 MySQL，并通过 Redis 短锁覆盖真实并发注册路径。
@@ -122,6 +125,8 @@ class AuthService
      *
      * @return array{status:string,user:array{id:int,username:string,password:string}} 注册状态和随机用户明文测试凭据。
      * @throws AuthException Redis 锁冲突或注册基础设施不可用时抛出。
+     * @throws \App\Exception\AuthException 认证、授权或业务校验失败时抛出。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
      */
     public function registerRandom(): array
     {
@@ -170,6 +175,7 @@ class AuthService
      * @param string $token 登录 token；方法内部会 trim，不能为空。
      * @return array{ok:bool} 退出成功结果。
      * @throws AuthException token 为空、并发退出冲突或认证基础设施异常时抛出。
+     * @throws \App\Exception\AuthException 认证、授权或业务校验失败时抛出。
      */
     public function logout(string $token): array
     {
@@ -194,7 +200,13 @@ class AuthService
         }
     }
 
-    /** 执行 `resolveToken` 方法对应的业务处理。 @return null|array{user_id:int,username:string,csrf_token:string} */
+    /**
+     * 解析令牌。
+     *
+     * @param string $token 待校验或撤销的访问令牌。
+     * @return null|array{user_id:int,username:string,csrf_token:string} 查询成功时返回对应数据，不存在时返回 null。
+     * @throws \App\Exception\AuthException 认证、授权或业务校验失败时抛出。
+     */
     public function resolveToken(string $token): ?array
     {
         $token = trim($token);
@@ -209,7 +221,7 @@ class AuthService
     }
 
     /**
-     * 查询 `findUser` 方法对应的数据或业务状态。
+     * 查询用户。
      * 根据用户名查询用户记录。
      *
      * Db::select 在不同驱动配置下可能返回对象或数组，这里统一转换成数组给上层使用。
@@ -233,7 +245,7 @@ class AuthService
     }
 
     /**
-     * 执行 `loginLockKey` 方法对应的业务处理。
+     * 处理登录锁键名。
      * 生成登录并发锁 key。
      *
      * @param string $username 已清洗后的用户名。
@@ -245,7 +257,7 @@ class AuthService
     }
 
     /**
-     * 执行 `registerLockKey` 方法对应的业务处理。
+     * 处理register锁键名。
      * 生成注册并发锁 key。
      *
      * @param string $username 已生成的随机用户名。
@@ -257,7 +269,7 @@ class AuthService
     }
 
     /**
-     * 执行 `logoutLockKey` 方法对应的业务处理。
+     * 处理退出登录锁键名。
      * 生成退出并发锁 key。
      *
      * @param string $token 已清洗后的登录 token。
@@ -269,7 +281,7 @@ class AuthService
     }
 
     /**
-     * 执行 `randomUsername` 方法对应的业务处理。
+     * 处理随机数据用户名。
      * 生成随机测试用户名。
      *
      * @param int $id 本次注册用户的雪花 ID。
@@ -281,7 +293,7 @@ class AuthService
     }
 
     /**
-     * 执行 `randomPassword` 方法对应的业务处理。
+     * 处理随机数据密码。
      * 生成随机测试用户密码。
      *
      * @return string 明文随机密码，仅用于测试接口响应。

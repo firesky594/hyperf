@@ -16,7 +16,17 @@ class AdminUserManagementService
 
     private $temporaryPasswordGenerator;
 
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @param IdGeneratorInterface $ids 注入的 IdGeneratorInterface 依赖。
+     * @param AdminAuditService $audit 注入的 AdminAuditService 依赖。
+     * @param AdminAuthService $auth 注入的 AdminAuthService 依赖。
+     * @param ?callable $passwordHasher 用于安全校验的哈希值。
+     * @param ?callable $temporaryPasswordGenerator 用于执行指定处理逻辑的回调。
+     * @return void 无返回值。
+     */
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $ids,
@@ -32,9 +42,12 @@ class AdminUserManagementService
     }
 
     /**
-     * 创建 `createAdministrator` 方法对应的数据或业务状态。
-     * @param array<string,mixed> $auditContext
-     * @return array{id:int,username:string,temporary_password:string}
+     * 创建管理员。
+     *
+     * @param string $username 登录用户名。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return array{id:int,username:string,temporary_password:string} 返回create管理员结构化数据。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
      */
     public function createAdministrator(string $username, array $auditContext): array
     {
@@ -76,7 +89,11 @@ class AdminUserManagementService
         });
     }
 
-    /** 查询 `listAdministrators` 方法对应的数据或业务状态。 @return list<array<string,mixed>> */
+    /**
+     * 查询管理员列表。
+     *
+     * @return list<array<string,mixed>> 返回list管理员列表结构化数据。
+     */
     public function listAdministrators(): array
     {
         $rows = $this->db->select(<<<'SQL'
@@ -104,7 +121,15 @@ SQL);
         }, $rows);
     }
 
-    /** 设置 `setStatus` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
+    /**
+     * 设置状态。
+     *
+     * @param int $adminId 对应业务记录的唯一标识。
+     * @param bool $enabled 控制enabled行为的布尔标记。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function setStatus(int $adminId, bool $enabled, array $auditContext): void
     {
         if ($adminId <= 0) {
@@ -150,7 +175,15 @@ SQL);
         }
     }
 
-    /** 更新 `updateAdministrator` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
+    /**
+     * 更新管理员。
+     *
+     * @param int $adminId 对应业务记录的唯一标识。
+     * @param string $username 登录用户名。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function updateAdministrator(int $adminId, string $username, array $auditContext): void
     {
         $username = trim($username);
@@ -164,7 +197,15 @@ SQL);
         });
     }
 
-    /** 执行 `assignRoles` 方法对应的业务处理。 @param list<int> $roleIds @param array<string,mixed> $auditContext */
+    /**
+     * 分配角色列表。
+     *
+     * @param int $adminId 对应业务记录的唯一标识。
+     * @param list<int> $roleIds 待关联业务记录的唯一标识列表。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function assignRoles(int $adminId, array $roleIds, array $auditContext): void
     {
         $roleIds = array_values(array_unique(array_map('intval', $roleIds)));
@@ -209,7 +250,14 @@ SQL);
         });
     }
 
-    /** 重置 `resetPassword` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
+    /**
+     * 重置密码。
+     *
+     * @param int $adminId 对应业务记录的唯一标识。
+     * @param array<string,mixed> $auditContext 记录操作者和请求信息的审计上下文。
+     * @return string 返回reset密码字符串结果。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function resetPassword(int $adminId, array $auditContext): string
     {
         if ($adminId <= 0) {
@@ -247,7 +295,14 @@ SQL);
         return $temporaryPassword;
     }
 
-    /** 执行 `lockedAdministrator` 方法对应的业务处理。 */
+    /**
+     * 处理locked管理员。
+     *
+     * @param ConnectionInterface $connection 传入的 ConnectionInterface 实例，用于处理locked管理员。
+     * @param int $adminId 对应业务记录的唯一标识。
+     * @return object 返回locked管理员处理结果。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function lockedAdministrator(ConnectionInterface $connection, int $adminId): object
     {
         $administrator = $connection->selectOne(
@@ -263,10 +318,13 @@ SQL);
     }
 
     /**
-     * 执行 `event` 方法对应的业务处理。
-     * @param array<string,mixed> $context
-     * @param array<string,mixed> $requestData
-     * @return array<string,mixed>
+     * 处理事件。
+     *
+     * @param array<string,mixed> $context 当前操作的审计上下文。
+     * @param string $action 待执行的操作标识。
+     * @param int $targetId 对应业务记录的唯一标识。
+     * @param array<string,mixed> $requestData request业务数据数据集合。
+     * @return array<string,mixed> 返回事件结构化数据。
      */
     private function event(array $context, string $action, int $targetId, array $requestData): array
     {

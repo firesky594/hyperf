@@ -11,10 +11,21 @@ use Throwable;
 /** 查询只追加且永久保存的后台操作审计记录。 */
 class AdminAuditQueryService
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @return void 无返回值。
+     */
     public function __construct(private Db $db) {}
 
-    /** 执行 `search` 方法对应的业务处理。 @return list<array<string,mixed>> */
+    /**
+     * 处理search。
+     *
+     * @param string $action 待执行的操作标识。
+     * @return list<array<string,mixed>> 返回search结构化数据。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function search(string $action = ''): array
     {
         try {

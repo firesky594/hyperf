@@ -31,7 +31,9 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
      *
      * @param null|int $workerId 工作节点 ID，取值范围 0 到 1023；为空时读取环境变量。
      * @param null|callable():int $timeProvider 毫秒时间提供器；为空时使用 microtime(true)。
+     * @return void 无返回值。
      * @throws InvalidArgumentException workerId 超出可用范围时抛出。
+     * @throws \InvalidArgumentException 传入参数不符合约束时抛出。
      */
     public function __construct(
         private ?int $workerId = null,
@@ -48,7 +50,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     }
 
     /**
-     * 生成 `generate` 方法对应的数据或业务状态。
+     * 处理generate。
      * 生成一个雪花 ID。
      *
      * ID 由毫秒时间戳、workerId 和同毫秒序列号组成。
@@ -56,6 +58,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
      *
      * @return int 可直接写入 MySQL BIGINT UNSIGNED 的雪花 ID。
      * @throws RuntimeException 检测到系统时间回拨时抛出，避免生成重复 ID。
+     * @throws \RuntimeException 运行环境或业务状态不满足要求时抛出。
      */
     public function generate(): int
     {
@@ -85,7 +88,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     }
 
     /**
-     * 执行 `currentTimeMillis` 方法对应的业务处理。
+     * 处理当前值TimeMillis。
      * 获取当前毫秒时间。
      *
      * 测试环境可以通过 timeProvider 控制返回值；生产环境使用系统时间。
@@ -102,7 +105,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     }
 
     /**
-     * 执行 `waitUntilNextMillis` 方法对应的业务处理。
+     * 处理waitUntilNextMillis。
      * 等待时间进入下一毫秒。
      *
      * 当同一毫秒内序列号耗尽时调用，确保下一个 ID 使用新的时间片。

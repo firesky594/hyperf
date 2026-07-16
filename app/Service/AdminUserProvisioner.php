@@ -24,7 +24,16 @@ class AdminUserProvisioner
 
     private $temporaryPasswordGenerator;
 
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @param IdGeneratorInterface $idGenerator 注入的 IdGeneratorInterface 依赖。
+     * @param AdminSchemaService $schema 注入的 AdminSchemaService 依赖。
+     * @param ?callable $passwordHasher 用于安全校验的哈希值。
+     * @param ?callable $temporaryPasswordGenerator 用于执行指定处理逻辑的回调。
+     * @return void 无返回值。
+     */
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $idGenerator,
@@ -39,8 +48,12 @@ class AdminUserProvisioner
     }
 
     /**
-     * 执行 `provisionSuperAdmin` 方法对应的业务处理。
-     * @return array{id:int,username:string,created:bool,temporary_password:string}
+     * 处理provisionSuper管理员。
+     *
+     * @param string $username 登录用户名。
+     * @return array{id:int,username:string,created:bool,temporary_password:string} 返回provisionSuper管理员结构化数据。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
      */
     public function provisionSuperAdmin(string $username = 'welkin'): array
     {
@@ -94,8 +107,13 @@ class AdminUserProvisioner
     }
 
     /**
-     * 执行 `provision` 方法对应的业务处理。
-     * @return array{id:int,username:string,created:bool}
+     * 处理provision。
+     *
+     * @param string $username 登录用户名。
+     * @param string $password 登录密码明文。
+     * @return array{id:int,username:string,created:bool} 返回provision结构化数据。
+     * @throws Throwable 底层处理失败并重新抛出原异常。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
      */
     public function provision(string $username, string $password): array
     {
@@ -135,7 +153,14 @@ class AdminUserProvisioner
         }
     }
 
-    /** 校验 `validate` 方法对应的数据或业务状态。 */
+    /**
+     * 校验ate。
+     *
+     * @param string $username 登录用户名。
+     * @param string $password 登录密码明文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function validate(string $username, string $password): void
     {
         $passwordLength = strlen($password);

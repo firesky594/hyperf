@@ -23,13 +23,22 @@ class AdminSetupCommand extends Command
 
     protected string $description = 'Create or reset an administrator account.';
 
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param AdminUserProvisioner $provisioner 注入的 AdminUserProvisioner 依赖。
+     * @return void 无返回值。
+     */
     public function __construct(private AdminUserProvisioner $provisioner)
     {
         parent::__construct();
     }
 
-    /** 执行当前控制台命令。 */
+    /**
+     * 执行当前控制台命令。
+     *
+     * @return int 命令执行结果码，成功时返回零。
+     */
     public function handle(): int
     {
         try {

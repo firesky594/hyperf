@@ -9,9 +9,18 @@ use Hyperf\DbConnection\Db;
 /** 维护 API 商品、版本、端点、文档、价格及价格审计的数据结构。 */
 class CatalogSchemaService
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @return void 无返回值。
+     */
     public function __construct(private Db $db) {}
-    /** 创建或升级当前模块所需的数据表。 */
+    /**
+     * 创建或升级当前模块所需的数据表。
+     *
+     * @return void 无返回值。
+     */
     public function ensureSchema(): void
     {
         foreach ([

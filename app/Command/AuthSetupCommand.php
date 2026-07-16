@@ -20,6 +20,7 @@ class AuthSetupCommand extends Command
      *
      * @param Db $db MySQL 访问入口，用于创建用户表和写入测试用户。
      * @param IdGeneratorInterface $idGenerator 雪花 ID 生成器，用于生成用户主键。
+     * @return void 无返回值。
      */
     public function __construct(
         private Db $db,
@@ -55,12 +56,12 @@ class AuthSetupCommand extends Command
     }
 
     /**
-     * 创建 `createUsersTable` 方法对应的数据或业务状态。
+     * 创建用户列表数据表。
      * 创建用户表。
      *
      * users.id 使用 BIGINT UNSIGNED 存储雪花 ID，不使用 MySQL 自增主键。
      *
-     * @return void
+     * @return void 无返回值。
      */
     private function createUsersTable(): void
     {
@@ -78,14 +79,14 @@ SQL);
     }
 
     /**
-     * 执行 `upsertDemoUser` 方法对应的业务处理。
+     * 处理upsertDemo用户。
      * 创建或更新测试用户。
      *
      * 用户存在时只刷新密码哈希和更新时间；用户不存在时使用雪花 ID 创建新记录。
      *
      * @param string $username 测试用户名；由命令参数传入，调用前已去除首尾空白。
      * @param string $password 测试用户明文密码；写入数据库前会使用 password_hash 生成哈希。
-     * @return void
+     * @return void 无返回值。
      */
     private function upsertDemoUser(string $username, string $password): void
     {

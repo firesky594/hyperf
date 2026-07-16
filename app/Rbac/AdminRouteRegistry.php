@@ -8,8 +8,9 @@ namespace App\Rbac;
 final class AdminRouteRegistry
 {
     /**
-     * 执行 `definitions` 方法对应的业务处理。
-     * @return list<AdminRouteDefinition>
+     * 处理definitions。
+     *
+     * @return list<AdminRouteDefinition> 返回definitions结构化数据。
      */
     public function definitions(): array
     {
@@ -48,7 +49,16 @@ final class AdminRouteRegistry
         ];
     }
 
-    /** 执行 `route` 方法对应的业务处理。 */
+    /**
+     * 处理路由。
+     *
+     * @param string $method HTTP 请求方法。
+     * @param string $path 请求路径。
+     * @param string $handler 后续请求处理器。
+     * @param ?string $permissionCode 传入的 ?string 实例，用于处理路由。
+     * @param ?string $permissionName 传入的 ?string 实例，用于处理路由。
+     * @return AdminRouteDefinition 返回路由处理结果。
+     */
     private function route(
         string $method,
         string $path,

@@ -16,15 +16,23 @@ class AdminAuditService
         '_csrf', 'cookie', 'authorization', 'token', 'secret', 'api_secret', 'signature',
     ];
 
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param IdGeneratorInterface $ids 注入的 IdGeneratorInterface 依赖。
+     * @return void 无返回值。
+     */
     public function __construct(private IdGeneratorInterface $ids)
     {
     }
 
     /**
-     * 执行 `append` 方法对应的业务处理。
-     * @param array<string,mixed> $event
-     * @throws JsonException
+     * 处理append。
+     *
+     * @param ConnectionInterface $connection 传入的 ConnectionInterface 实例，用于处理append。
+     * @param array<string,mixed> $event 当前监听到的事件对象。
+     * @return void 无返回值。
+     * @throws JsonException 处理失败时抛出。
      */
     public function append(ConnectionInterface $connection, array $event): void
     {
@@ -56,7 +64,12 @@ class AdminAuditService
         );
     }
 
-    /** 执行 `sanitize` 方法对应的业务处理。 @param array<string,mixed> $data @return array<string,mixed> */
+    /**
+     * 处理sanitize。
+     *
+     * @param array<string,mixed> $data 待处理的业务数据。
+     * @return array<string,mixed> 返回sanitize结构化数据。
+     */
     private function sanitize(array $data): array
     {
         $safe = [];

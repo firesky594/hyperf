@@ -15,6 +15,7 @@ class AuthController extends AbstractController
      * 初始化认证控制器。
      *
      * @param AuthService $auth 认证服务，负责登录、退出和注册业务。
+     * @return void 无返回值。
      */
     public function __construct(private AuthService $auth)
     {
@@ -58,7 +59,7 @@ class AuthController extends AbstractController
     }
 
     /**
-     * 执行 `registerRandom` 方法对应的业务处理。
+     * 处理register随机数据。
      * 注册单个随机测试用户。
      *
      * 每次访问只生成并同步写入 1 个用户，不再走 Redis Stream 批量队列。
@@ -75,7 +76,7 @@ class AuthController extends AbstractController
     }
 
     /**
-     * 执行 `tokenFromRequest` 方法对应的业务处理。
+     * 处理令牌FromRequest。
      * 从当前请求提取登录 token。
      *
      * @return string 解析到的 token；未提供时返回空字符串。
@@ -91,7 +92,7 @@ class AuthController extends AbstractController
     }
 
     /**
-     * 执行 `authError` 方法对应的业务处理。
+     * 处理认证错误页面。
      * 将认证异常转换为统一 JSON 错误响应。
      *
      * @param AuthException $exception 认证服务抛出的业务异常。

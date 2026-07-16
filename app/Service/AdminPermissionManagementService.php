@@ -12,17 +12,37 @@ use Hyperf\DbConnection\Db;
 /** 维护后台自定义权限及系统权限的可编辑属性。 */
 class AdminPermissionManagementService
 {
-    /** 初始化当前组件所需的依赖。 */
+    /**
+     * 初始化当前组件所需的依赖。
+     *
+     * @param Db $db 数据库访问入口。
+     * @param IdGeneratorInterface $ids 注入的 IdGeneratorInterface 依赖。
+     * @param AdminAuditService $audit 注入的 AdminAuditService 依赖。
+     * @return void 无返回值。
+     */
     public function __construct(private Db $db, private IdGeneratorInterface $ids, private AdminAuditService $audit) {}
 
-    /** 查询 `listPermissions` 方法对应的数据或业务状态。 @return list<array<string,mixed>> */
+    /**
+     * 查询权限列表。
+     *
+     * @return list<array<string,mixed>> 返回list权限列表结构化数据。
+     */
     public function listPermissions(): array
     {
         return array_map(static fn (object|array $row): array => is_object($row) ? get_object_vars($row) : $row,
             $this->db->select('SELECT `id`, `name`, `code`, `source`, `route_method`, `route_path`, `description`, `status`, `created_at`, `updated_at` FROM `admin_permissions` WHERE `deleted_at` IS NULL ORDER BY `source` DESC, `code` ASC'));
     }
 
-    /** 创建 `createCustom` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
+    /**
+     * 创建custom。
+     *
+     * @param string $name 业务对象名称。
+     * @param string $code code字符串。
+     * @param string $description description字符串。
+     * @param array<string,mixed> $context 当前操作的审计上下文。
+     * @return int 返回createCustom整数结果。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function createCustom(string $name, string $code, string $description, array $context): int
     {
         [$name, $code, $description] = $this->fields($name, $code, $description);
@@ -37,7 +57,17 @@ class AdminPermissionManagementService
         });
     }
 
-    /** 更新 `updateCustom` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
+    /**
+     * 更新custom。
+     *
+     * @param int $id 标识数值。
+     * @param string $name 业务对象名称。
+     * @param string $code code字符串。
+     * @param string $description description字符串。
+     * @param array<string,mixed> $context 当前操作的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function updateCustom(int $id, string $name, string $code, string $description, array $context): void
     {
         [$name, $code, $description] = $this->fields($name, $code, $description);
@@ -53,7 +83,15 @@ class AdminPermissionManagementService
         });
     }
 
-    /** 设置 `setStatus` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
+    /**
+     * 设置状态。
+     *
+     * @param int $id 标识数值。
+     * @param bool $enabled 控制enabled行为的布尔标记。
+     * @param array<string,mixed> $context 当前操作的审计上下文。
+     * @return void 无返回值。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     public function setStatus(int $id, bool $enabled, array $context): void
     {
         $this->db->transaction(function (ConnectionInterface $connection) use ($id, $enabled, $context): void {
@@ -66,7 +104,14 @@ class AdminPermissionManagementService
         });
     }
 
-    /** 执行 `lockedCustom` 方法对应的业务处理。 */
+    /**
+     * 处理lockedCustom。
+     *
+     * @param ConnectionInterface $connection 传入的 ConnectionInterface 实例，用于处理lockedCustom。
+     * @param int $id 标识数值。
+     * @return object 返回lockedCustom处理结果。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function lockedCustom(ConnectionInterface $connection, int $id): object
     {
         if ($id <= 0) { throw AdminAuthException::validation(); }
@@ -76,7 +121,15 @@ class AdminPermissionManagementService
         return $row;
     }
 
-    /** 执行 `fields` 方法对应的业务处理。 @return array{string,string,string} */
+    /**
+     * 处理字段。
+     *
+     * @param string $name 业务对象名称。
+     * @param string $code code字符串。
+     * @param string $description description字符串。
+     * @return array{string,string,string} 返回字段结构化数据。
+     * @throws \App\Exception\AdminAuthException 认证、授权或业务校验失败时抛出。
+     */
     private function fields(string $name, string $code, string $description): array
     {
         $name = trim($name); $code = trim($code); $description = trim($description);
@@ -84,7 +137,15 @@ class AdminPermissionManagementService
         return [$name, $code, $description];
     }
 
-    /** 执行 `event` 方法对应的业务处理。 @param array<string,mixed> $context @param array<string,mixed> $data @return array<string,mixed> */
+    /**
+     * 处理事件。
+     *
+     * @param array<string,mixed> $context 当前操作的审计上下文。
+     * @param string $action 待执行的操作标识。
+     * @param int $id 标识数值。
+     * @param array<string,mixed> $data 待处理的业务数据。
+     * @return array<string,mixed> 返回事件结构化数据。
+     */
     private function event(array $context, string $action, int $id, array $data): array
     { return $context + ['action' => $action, 'target_type' => 'admin_permission', 'target_id' => $id, 'request_data' => $data, 'result' => 'success', 'http_status' => 200]; }
 }
