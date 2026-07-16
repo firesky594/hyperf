@@ -16,6 +16,7 @@ class AdminPasswordService
 
     private $passwordHasher;
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private Db $db,
         private AdminAuthService $auth,
@@ -28,6 +29,7 @@ class AdminPasswordService
             ?? static fn (string $password): string => password_hash($password, PASSWORD_ARGON2ID);
     }
 
+    /** 修改 `changePassword` 方法对应的数据或业务状态。 */
     public function changePassword(int $adminId, string $currentPassword, string $newPassword): void
     {
         if (

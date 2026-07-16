@@ -7,7 +7,7 @@ namespace App\View;
 /** 渲染供应商 API 编辑发布页面及采购方 API 市场。 */
 final class CatalogPageRenderer
 {
-    /** @param array<string,mixed> $session @param list<array<string,mixed>> $products */
+    /** 执行 `supplierProducts` 方法对应的业务处理。 @param array<string,mixed> $session @param list<array<string,mixed>> $products */
     public function supplierProducts(array $session, array $products, string $csrf): string
     {
         $items = '';
@@ -22,7 +22,7 @@ final class CatalogPageRenderer
         return $this->shell('供应商 API 管理', $body);
     }
 
-    /** @param array<string,mixed> $session @param array<string,mixed> $data */
+    /** 执行 `supplierEditor` 方法对应的业务处理。 @param array<string,mixed> $session @param array<string,mixed> $data */
     public function supplierEditor(array $session, array $data, string $csrf): string
     {
         $lines = [];
@@ -35,7 +35,7 @@ final class CatalogPageRenderer
         return $this->shell('API 版本编辑', $body);
     }
 
-    /** @param array<string,mixed> $session @param list<array<string,mixed>> $products */
+    /** 执行 `market` 方法对应的业务处理。 @param array<string,mixed> $session @param list<array<string,mixed>> $products */
     public function market(array $session, array $products): string
     {
         $items = '';
@@ -44,7 +44,7 @@ final class CatalogPageRenderer
         return $this->shell('API 市场', '<header><a href="/workspace/buyer">← 采购方工作台</a><span>' . $this->e((string) ($session['username'] ?? '')) . '</span></header><main><p class="eyebrow">BUYER / MARKET</p><h1>API 市场</h1><section class="grid">' . $items . '</section></main>');
     }
 
-    /** @param array<string,mixed> $session @param array<string,mixed> $product */
+    /** 执行 `marketDetail` 方法对应的业务处理。 @param array<string,mixed> $session @param array<string,mixed> $product */
     public function marketDetail(array $session, array $product): string
     {
         $endpoints = '';
@@ -52,8 +52,10 @@ final class CatalogPageRenderer
         return $this->shell((string) $product['name'], '<header><a href="/market">← API 市场</a><span>' . $this->e((string) ($session['username'] ?? '')) . '</span></header><main><p class="eyebrow">' . $this->e((string) $product['version']) . '</p><h1>' . $this->e((string) $product['name']) . '</h1><p>' . $this->e((string) $product['summary']) . '</p><strong>' . $this->money($product) . '</strong><section><h2>端点</h2><ul>' . $endpoints . '</ul><h2>接口文档</h2><pre>' . $this->e((string) $product['documentation']) . '</pre></section></main>');
     }
 
-    /** @param array<string,mixed> $row */
+    /** 执行 `money` 方法对应的业务处理。 @param array<string,mixed> $row */
     private function money(array $row): string { return number_format(((int) ($row['unit_price_micros'] ?? 0)) / 1_000_000, 6, '.', '') . ' ' . $this->e((string) ($row['currency'] ?? 'CNY')); }
+    /** 转义 HTML 特殊字符，防止页面注入。 */
     private function e(string $value): string { return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+    /** 组装包含公共结构和样式的完整页面。 */
     private function shell(string $title, string $body): string { return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . $this->e($title) . ' · UniAPI</title><style>:root{color-scheme:dark;--bg:#071012;--panel:#102023;--line:#284044;--accent:#45e0c3;--text:#eef7f5;--muted:#9fb4b1}*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#071012,#0c191c);color:var(--text);font:16px system-ui;min-height:100vh}header,main{width:min(1120px,calc(100% - 40px));margin:auto}header{min-height:72px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}h1{font-size:clamp(40px,7vw,72px);margin:.2em 0}.eyebrow{color:var(--accent);font:12px monospace;letter-spacing:.14em}main>.eyebrow{margin-top:52px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:30px 0}article,main>form,main>section{padding:24px;border:1px solid var(--line);background:var(--panel)}form{display:grid;gap:14px;margin:20px 0}label{display:grid;gap:6px;color:var(--muted)}input,textarea,button,a{font:inherit}input,textarea{padding:11px;background:var(--bg);border:1px solid var(--line);color:var(--text)}textarea{min-height:100px}button,a{color:var(--accent)}button{min-height:44px;border:1px solid var(--accent);background:transparent;font-weight:700}.empty{color:var(--muted)}pre{white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:640px){header{flex-wrap:wrap}}</style></head><body>' . $body . '</body></html>'; }
 }

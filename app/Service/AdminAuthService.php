@@ -150,6 +150,7 @@ LUA;
 
     private $clock;
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private Db $db,
         private Redis $redis,
@@ -168,6 +169,7 @@ LUA;
     }
 
     /**
+     * 校验凭据并建立登录会话。
      * @return array{
      *     token:string,
      *     expires_in:int,
@@ -266,6 +268,7 @@ LUA;
     }
 
     /**
+     * 执行 `resolveSession` 方法对应的业务处理。
      * @return null|array{admin_id:int,username:string,issued_at:int,expires_at:int,csrf_token:string}
      */
     public function resolveSession(string $token): ?array
@@ -310,6 +313,7 @@ LUA;
         }
     }
 
+    /** 注销当前登录会话。 */
     public function logout(string $token): void
     {
         try {
@@ -324,6 +328,7 @@ LUA;
         }
     }
 
+    /** 撤销 `revokeAdminSessions` 方法对应的数据或业务状态。 */
     public function revokeAdminSessions(int $adminId): void
     {
         if ($adminId <= 0) {
@@ -361,6 +366,7 @@ LUA;
     }
 
     /**
+     * 执行 `authenticateInTransaction` 方法对应的业务处理。
      * @return array<string,mixed>
      */
     private function authenticateInTransaction(string $username, string $password): array
@@ -406,6 +412,7 @@ LUA;
     }
 
     /**
+     * 查询 `findUser` 方法对应的数据或业务状态。
      * @return null|array<string,mixed>
      */
     private function findUser(ConnectionInterface $connection, string $username): ?array
@@ -419,6 +426,7 @@ LUA;
         return is_array($user) ? $user : null;
     }
 
+    /** 执行 `reserveAttempt` 方法对应的业务处理。 */
     private function reserveAttempt(string $failureKey, string $activeReservationKey, string $reservationId): void
     {
         $result = $this->redis->eval(
@@ -441,6 +449,7 @@ LUA;
         }
     }
 
+    /** 执行 `finalizeFailure` 方法对应的业务处理。 */
     private function finalizeFailure(
         string $failureKey,
         string $activeReservationKey,
@@ -462,6 +471,7 @@ LUA;
         }
     }
 
+    /** 执行 `releaseAttempt` 方法对应的业务处理。 */
     private function releaseAttempt(string $activeReservationKey, string $reservationId): void
     {
         $result = $this->redis->eval(
@@ -474,6 +484,7 @@ LUA;
         }
     }
 
+    /** 执行 `clearAttemptsAfterSuccess` 方法对应的业务处理。 */
     private function clearAttemptsAfterSuccess(
         string $failureKey,
         string $activeReservationKey,
@@ -489,6 +500,7 @@ LUA;
         }
     }
 
+    /** 执行 `bestEffortFinalizeFailure` 方法对应的业务处理。 */
     private function bestEffortFinalizeFailure(
         string $failureKey,
         string $activeReservationKey,
@@ -500,6 +512,7 @@ LUA;
         }
     }
 
+    /** 执行 `bestEffortRelease` 方法对应的业务处理。 */
     private function bestEffortRelease(string $activeReservationKey, string $reservationId): void
     {
         try {
@@ -508,6 +521,7 @@ LUA;
         }
     }
 
+    /** 执行 `bestEffortDeleteSession` 方法对应的业务处理。 */
     private function bestEffortDeleteSession(string $key): void
     {
         try {
@@ -516,6 +530,7 @@ LUA;
         }
     }
 
+    /** 执行 `bestEffortRemoveSessionFromRegistry` 方法对应的业务处理。 */
     private function bestEffortRemoveSessionFromRegistry(string $registryKey, string $sessionKey): void
     {
         try {
@@ -524,21 +539,25 @@ LUA;
         }
     }
 
+    /** 执行 `sessionKey` 方法对应的业务处理。 */
     private function sessionKey(string $token): string
     {
         return self::SESSION_PREFIX . hash('sha256', $token);
     }
 
+    /** 执行 `failureKey` 方法对应的业务处理。 */
     private function failureKey(string $username, string $clientIp): string
     {
         return self::FAILURE_PREFIX . hash('sha256', strtolower($username) . chr(0) . $clientIp);
     }
 
+    /** 执行 `activeReservationKey` 方法对应的业务处理。 */
     private function activeReservationKey(string $failureKey): string
     {
         return $failureKey . ':active';
     }
 
+    /** 校验 `validateLoginInput` 方法对应的数据或业务状态。 */
     private function validateLoginInput(string $username, string $password): void
     {
         if (
@@ -550,6 +569,7 @@ LUA;
         }
     }
 
+    /** 删除 `deleteSession` 方法对应的数据或业务状态。 */
     private function deleteSession(string $key): void
     {
         if ($this->redis->del($key) === false) {
@@ -557,6 +577,7 @@ LUA;
         }
     }
 
+    /** 判断 `isValidSession` 方法对应的数据或业务状态。 */
     private function isValidSession(mixed $session, int $now): bool
     {
         if (! is_array($session) || count($session) !== 7) {

@@ -15,7 +15,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 /** 解析用户 Bearer Token 或会话 Cookie，并向后续请求注入登录态。 */
 class UserAuthMiddleware implements MiddlewareInterface
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private AuthService $auth, private UserPortalResponseFactory $responses) {}
+    /** 处理监听到的事件。 */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $token = $request->getCookieParams()['uniapi_user_session'] ?? '';

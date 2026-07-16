@@ -19,12 +19,14 @@ use Psr\Http\Message\ResponseInterface;
 /** 渲染管理员登录后的后台首页。 */
 class AgentAdminHomeController extends AbstractController
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private AgentAdminPageRenderer $pages,
         private AgentAdminResponseFactory $responses
     ) {
     }
 
+    /** 处理当前模块的默认入口请求。 */
     public function index(): ResponseInterface
     {
         $session = $this->request->getAttribute('admin_session');

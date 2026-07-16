@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 /** 提供管理员密码修改页面并处理强制改密。 */
 class AgentAdminPasswordController extends AbstractController
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private AdminPasswordService $passwords,
         private AgentAdminPageRenderer $pages,
@@ -20,6 +21,7 @@ class AgentAdminPasswordController extends AbstractController
     ) {
     }
 
+    /** 渲染当前功能页面。 */
     public function page(): ResponseInterface
     {
         $session = $this->session();
@@ -30,6 +32,7 @@ class AgentAdminPasswordController extends AbstractController
         ));
     }
 
+    /** 修改 `change` 方法对应的数据或业务状态。 */
     public function change(): ResponseInterface
     {
         $session = $this->session();
@@ -62,6 +65,7 @@ class AgentAdminPasswordController extends AbstractController
     }
 
     /**
+     * 读取并校验当前请求的会话数据。
      * @return array<string,mixed>
      */
     private function session(): array
@@ -72,6 +76,7 @@ class AgentAdminPasswordController extends AbstractController
     }
 
     /**
+     * 校验 `validateCsrf` 方法对应的数据或业务状态。
      * @param array<string,mixed> $session
      */
     private function validateCsrf(array $session): void

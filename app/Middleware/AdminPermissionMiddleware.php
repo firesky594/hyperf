@@ -16,6 +16,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /** 根据路由权限定义实时校验管理员授权，缺少定义时失败关闭。 */
 final class AdminPermissionMiddleware implements MiddlewareInterface
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private AdminAuthorizationService $authorization,
         private AdminRouteRegistry $routes,
@@ -24,6 +25,7 @@ final class AdminPermissionMiddleware implements MiddlewareInterface
     ) {
     }
 
+    /** 处理监听到的事件。 */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $method = strtoupper($request->getMethod());

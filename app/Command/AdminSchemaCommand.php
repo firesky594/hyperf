@@ -14,11 +14,13 @@ final class AdminSchemaCommand extends Command
 
     protected string $description = 'Create or upgrade the administrator database schema.';
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private AdminSchemaService $schema)
     {
         parent::__construct();
     }
 
+    /** 执行当前控制台命令。 */
     public function handle(): int
     {
         $this->schema->ensureSchema();

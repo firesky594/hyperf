@@ -15,12 +15,14 @@ class DemoConcurrentService
 {
     private const REDIS_KEY = 'demo:concurrent:counter';
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private Db $db,
         private Redis $redis
     ) {
     }
 
+    /** 执行当前服务的核心流程。 */
     public function run(): array
     {
         $startedAt = microtime(true);
@@ -38,6 +40,7 @@ class DemoConcurrentService
         ];
     }
 
+    /** 检查 `checkMysql` 方法对应的数据或业务状态。 */
     private function checkMysql(): array
     {
         $rows = $this->db->select('SELECT 1 AS health_check');
@@ -52,6 +55,7 @@ class DemoConcurrentService
         ];
     }
 
+    /** 检查 `checkRedis` 方法对应的数据或业务状态。 */
     private function checkRedis(): array
     {
         $value = $this->redis->incr(self::REDIS_KEY);
@@ -65,6 +69,7 @@ class DemoConcurrentService
         ];
     }
 
+    /** 测量 `measure` 方法对应的数据或业务状态。 */
     private function measure(string $name, callable $callback): array
     {
         $startedAt = microtime(true);
@@ -91,6 +96,7 @@ class DemoConcurrentService
         }
     }
 
+    /** 执行 `elapsedMs` 方法对应的业务处理。 */
     private function elapsedMs(float $startedAt): float
     {
         return round((microtime(true) - $startedAt) * 1000, 2);

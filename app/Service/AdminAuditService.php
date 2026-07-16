@@ -16,11 +16,13 @@ class AdminAuditService
         '_csrf', 'cookie', 'authorization', 'token', 'secret', 'api_secret', 'signature',
     ];
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private IdGeneratorInterface $ids)
     {
     }
 
     /**
+     * 执行 `append` 方法对应的业务处理。
      * @param array<string,mixed> $event
      * @throws JsonException
      */
@@ -54,7 +56,7 @@ class AdminAuditService
         );
     }
 
-    /** @param array<string,mixed> $data @return array<string,mixed> */
+    /** 执行 `sanitize` 方法对应的业务处理。 @param array<string,mixed> $data @return array<string,mixed> */
     private function sanitize(array $data): array
     {
         $safe = [];

@@ -28,11 +28,13 @@ class DbQueryExecutedListener implements ListenerInterface
      */
     private $logger;
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(ContainerInterface $container)
     {
         $this->logger = $container->get(LoggerFactory::class)->get('sql');
     }
 
+    /** 声明当前监听器订阅的事件。 */
     public function listen(): array
     {
         return [
@@ -41,6 +43,7 @@ class DbQueryExecutedListener implements ListenerInterface
     }
 
     /**
+     * 处理监听到的事件。
      * @param QueryExecuted $event
      */
     public function process(object $event): void

@@ -12,15 +12,16 @@ use Hyperf\DbConnection\Db;
 /** 维护后台菜单层级、路由、排序、状态及所需权限。 */
 class AdminMenuManagementService
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private Db $db, private IdGeneratorInterface $ids, private AdminAuditService $audit) {}
 
-    /** @return list<array<string,mixed>> */
+    /** 查询 `listMenus` 方法对应的数据或业务状态。 @return list<array<string,mixed>> */
     public function listMenus(): array
     {
         return array_map(static fn (object|array $row): array => is_object($row) ? get_object_vars($row) : $row, $this->db->select('SELECT am.`id`, am.`parent_id`, am.`name`, am.`icon`, am.`sort_order`, am.`route_path`, am.`permission_id`, ap.`code` AS `permission_code`, am.`status`, am.`created_at`, am.`updated_at` FROM `admin_menus` am LEFT JOIN `admin_permissions` ap ON ap.`id` = am.`permission_id` AND ap.`deleted_at` IS NULL WHERE am.`deleted_at` IS NULL ORDER BY COALESCE(am.`parent_id`, 0), am.`sort_order`, am.`id`'));
     }
 
-    /** @param array<string,mixed> $context */
+    /** 创建 `createMenu` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
     public function createMenu(?int $parentId, string $name, string $icon, int $sortOrder, string $routePath, ?int $permissionId, array $context): int
     {
         [$name, $icon, $routePath] = $this->fields($name, $icon, $routePath);
@@ -33,7 +34,7 @@ class AdminMenuManagementService
         });
     }
 
-    /** @param array<string,mixed> $context */
+    /** 更新 `updateMenu` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
     public function updateMenu(int $id, ?int $parentId, string $name, string $icon, int $sortOrder, string $routePath, ?int $permissionId, array $context): void
     {
         [$name, $icon, $routePath] = $this->fields($name, $icon, $routePath);
@@ -44,7 +45,7 @@ class AdminMenuManagementService
         });
     }
 
-    /** @param array<string,mixed> $context */
+    /** 设置 `setStatus` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
     public function setStatus(int $id, bool $enabled, array $context): void
     {
         $this->db->transaction(function (ConnectionInterface $connection) use ($id, $enabled, $context): void {
@@ -54,12 +55,14 @@ class AdminMenuManagementService
         });
     }
 
+    /** 执行 `lockedMenu` 方法对应的业务处理。 */
     private function lockedMenu(ConnectionInterface $connection, int $id): object
     {
         $row = $connection->selectOne('SELECT `id` FROM `admin_menus` WHERE `id` = ? AND `deleted_at` IS NULL LIMIT 1 FOR UPDATE', [$id]);
         if (! is_object($row)) { throw AdminAuthException::validation('Menu does not exist.'); } return $row;
     }
 
+    /** 校验 `validateReferences` 方法对应的数据或业务状态。 */
     private function validateReferences(ConnectionInterface $connection, ?int $parentId, ?int $permissionId, ?int $selfId): void
     {
         if ($parentId !== null) {
@@ -68,7 +71,7 @@ class AdminMenuManagementService
         if ($permissionId !== null && ($permissionId <= 0 || ! is_object($connection->selectOne('SELECT `id` FROM `admin_permissions` WHERE `id` = ? AND `status` = 1 AND `deleted_at` IS NULL LIMIT 1 FOR UPDATE', [$permissionId])))) { throw AdminAuthException::validation('Menu permission is invalid.'); }
     }
 
-    /** @return array{string,string,string} */
+    /** 执行 `fields` 方法对应的业务处理。 @return array{string,string,string} */
     private function fields(string $name, string $icon, string $routePath): array
     {
         $name = trim($name); $icon = trim($icon); $routePath = trim($routePath);
@@ -76,6 +79,6 @@ class AdminMenuManagementService
         return [$name, $icon, $routePath];
     }
 
-    /** @param array<string,mixed> $context @param array<string,mixed> $data @return array<string,mixed> */
+    /** 执行 `event` 方法对应的业务处理。 @param array<string,mixed> $context @param array<string,mixed> $data @return array<string,mixed> */
     private function event(array $context, string $action, int $id, array $data): array { return $context + ['action' => $action, 'target_type' => 'admin_menu', 'target_id' => $id, 'request_data' => $data, 'result' => 'success', 'http_status' => 200]; }
 }

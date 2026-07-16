@@ -24,6 +24,7 @@ class AdminUserProvisioner
 
     private $temporaryPasswordGenerator;
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $idGenerator,
@@ -38,6 +39,7 @@ class AdminUserProvisioner
     }
 
     /**
+     * 执行 `provisionSuperAdmin` 方法对应的业务处理。
      * @return array{id:int,username:string,created:bool,temporary_password:string}
      */
     public function provisionSuperAdmin(string $username = 'welkin'): array
@@ -92,6 +94,7 @@ class AdminUserProvisioner
     }
 
     /**
+     * 执行 `provision` 方法对应的业务处理。
      * @return array{id:int,username:string,created:bool}
      */
     public function provision(string $username, string $password): array
@@ -132,6 +135,7 @@ class AdminUserProvisioner
         }
     }
 
+    /** 校验 `validate` 方法对应的数据或业务状态。 */
     private function validate(string $username, string $password): void
     {
         $passwordLength = strlen($password);

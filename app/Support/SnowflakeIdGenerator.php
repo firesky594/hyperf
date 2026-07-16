@@ -23,6 +23,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     private int $sequence = 0;
 
     /**
+     * 初始化当前组件所需的依赖。
      * 初始化雪花 ID 生成器。
      *
      * workerId 用于区分不同实例，默认读取 SNOWFLAKE_WORKER_ID。
@@ -47,6 +48,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     }
 
     /**
+     * 生成 `generate` 方法对应的数据或业务状态。
      * 生成一个雪花 ID。
      *
      * ID 由毫秒时间戳、workerId 和同毫秒序列号组成。
@@ -83,6 +85,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     }
 
     /**
+     * 执行 `currentTimeMillis` 方法对应的业务处理。
      * 获取当前毫秒时间。
      *
      * 测试环境可以通过 timeProvider 控制返回值；生产环境使用系统时间。
@@ -99,6 +102,7 @@ class SnowflakeIdGenerator implements IdGeneratorInterface
     }
 
     /**
+     * 执行 `waitUntilNextMillis` 方法对应的业务处理。
      * 等待时间进入下一毫秒。
      *
      * 当同一毫秒内序列号耗尽时调用，确保下一个 ID 使用新的时间片。

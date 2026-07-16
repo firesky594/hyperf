@@ -26,6 +26,7 @@ class AuthService
     private $passwordHasher;
 
     /**
+     * 初始化当前组件所需的依赖。
      * 初始化登录认证服务。
      *
      * @param Db $db MySQL 查询入口，用于读取用户记录。
@@ -51,6 +52,7 @@ class AuthService
     }
 
     /**
+     * 校验凭据并建立登录会话。
      * 校验账号密码并创建 Redis 登录缓存。
      *
      * 同一用户名会先获取短期 Redis 锁，避免并发登录同时生成多份登录态。
@@ -112,6 +114,7 @@ class AuthService
     }
 
     /**
+     * 执行 `registerRandom` 方法对应的业务处理。
      * 注册单个随机测试用户。
      *
      * 该方法每次只生成 1 个测试用户，同步写入 MySQL，并通过 Redis 短锁覆盖真实并发注册路径。
@@ -157,6 +160,7 @@ class AuthService
     }
 
     /**
+     * 注销当前登录会话。
      * 删除 Redis 登录缓存并完成退出登录。
      *
      * 退出操作保持幂等：Redis key 不存在时也返回成功。
@@ -190,7 +194,7 @@ class AuthService
         }
     }
 
-    /** @return null|array{user_id:int,username:string,csrf_token:string} */
+    /** 执行 `resolveToken` 方法对应的业务处理。 @return null|array{user_id:int,username:string,csrf_token:string} */
     public function resolveToken(string $token): ?array
     {
         $token = trim($token);
@@ -205,6 +209,7 @@ class AuthService
     }
 
     /**
+     * 查询 `findUser` 方法对应的数据或业务状态。
      * 根据用户名查询用户记录。
      *
      * Db::select 在不同驱动配置下可能返回对象或数组，这里统一转换成数组给上层使用。
@@ -228,6 +233,7 @@ class AuthService
     }
 
     /**
+     * 执行 `loginLockKey` 方法对应的业务处理。
      * 生成登录并发锁 key。
      *
      * @param string $username 已清洗后的用户名。
@@ -239,6 +245,7 @@ class AuthService
     }
 
     /**
+     * 执行 `registerLockKey` 方法对应的业务处理。
      * 生成注册并发锁 key。
      *
      * @param string $username 已生成的随机用户名。
@@ -250,6 +257,7 @@ class AuthService
     }
 
     /**
+     * 执行 `logoutLockKey` 方法对应的业务处理。
      * 生成退出并发锁 key。
      *
      * @param string $token 已清洗后的登录 token。
@@ -261,6 +269,7 @@ class AuthService
     }
 
     /**
+     * 执行 `randomUsername` 方法对应的业务处理。
      * 生成随机测试用户名。
      *
      * @param int $id 本次注册用户的雪花 ID。
@@ -272,6 +281,7 @@ class AuthService
     }
 
     /**
+     * 执行 `randomPassword` 方法对应的业务处理。
      * 生成随机测试用户密码。
      *
      * @return string 明文随机密码，仅用于测试接口响应。

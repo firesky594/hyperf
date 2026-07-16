@@ -12,16 +12,17 @@ use Hyperf\DbConnection\Db;
 /** 维护后台自定义权限及系统权限的可编辑属性。 */
 class AdminPermissionManagementService
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private Db $db, private IdGeneratorInterface $ids, private AdminAuditService $audit) {}
 
-    /** @return list<array<string,mixed>> */
+    /** 查询 `listPermissions` 方法对应的数据或业务状态。 @return list<array<string,mixed>> */
     public function listPermissions(): array
     {
         return array_map(static fn (object|array $row): array => is_object($row) ? get_object_vars($row) : $row,
             $this->db->select('SELECT `id`, `name`, `code`, `source`, `route_method`, `route_path`, `description`, `status`, `created_at`, `updated_at` FROM `admin_permissions` WHERE `deleted_at` IS NULL ORDER BY `source` DESC, `code` ASC'));
     }
 
-    /** @param array<string,mixed> $context */
+    /** 创建 `createCustom` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
     public function createCustom(string $name, string $code, string $description, array $context): int
     {
         [$name, $code, $description] = $this->fields($name, $code, $description);
@@ -36,7 +37,7 @@ class AdminPermissionManagementService
         });
     }
 
-    /** @param array<string,mixed> $context */
+    /** 更新 `updateCustom` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
     public function updateCustom(int $id, string $name, string $code, string $description, array $context): void
     {
         [$name, $code, $description] = $this->fields($name, $code, $description);
@@ -52,7 +53,7 @@ class AdminPermissionManagementService
         });
     }
 
-    /** @param array<string,mixed> $context */
+    /** 设置 `setStatus` 方法对应的数据或业务状态。 @param array<string,mixed> $context */
     public function setStatus(int $id, bool $enabled, array $context): void
     {
         $this->db->transaction(function (ConnectionInterface $connection) use ($id, $enabled, $context): void {
@@ -65,6 +66,7 @@ class AdminPermissionManagementService
         });
     }
 
+    /** 执行 `lockedCustom` 方法对应的业务处理。 */
     private function lockedCustom(ConnectionInterface $connection, int $id): object
     {
         if ($id <= 0) { throw AdminAuthException::validation(); }
@@ -74,7 +76,7 @@ class AdminPermissionManagementService
         return $row;
     }
 
-    /** @return array{string,string,string} */
+    /** 执行 `fields` 方法对应的业务处理。 @return array{string,string,string} */
     private function fields(string $name, string $code, string $description): array
     {
         $name = trim($name); $code = trim($code); $description = trim($description);
@@ -82,7 +84,7 @@ class AdminPermissionManagementService
         return [$name, $code, $description];
     }
 
-    /** @param array<string,mixed> $context @param array<string,mixed> $data @return array<string,mixed> */
+    /** 执行 `event` 方法对应的业务处理。 @param array<string,mixed> $context @param array<string,mixed> $data @return array<string,mixed> */
     private function event(array $context, string $action, int $id, array $data): array
     { return $context + ['action' => $action, 'target_type' => 'admin_permission', 'target_id' => $id, 'request_data' => $data, 'result' => 'success', 'http_status' => 200]; }
 }

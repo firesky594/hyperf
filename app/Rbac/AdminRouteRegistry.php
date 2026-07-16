@@ -8,6 +8,7 @@ namespace App\Rbac;
 final class AdminRouteRegistry
 {
     /**
+     * 执行 `definitions` 方法对应的业务处理。
      * @return list<AdminRouteDefinition>
      */
     public function definitions(): array
@@ -47,6 +48,7 @@ final class AdminRouteRegistry
         ];
     }
 
+    /** 执行 `route` 方法对应的业务处理。 */
     private function route(
         string $method,
         string $path,

@@ -11,6 +11,7 @@ use Psr\Http\Message\ResponseInterface;
 class AuthController extends AbstractController
 {
     /**
+     * 初始化当前组件所需的依赖。
      * 初始化认证控制器。
      *
      * @param AuthService $auth 认证服务，负责登录、退出和注册业务。
@@ -20,6 +21,7 @@ class AuthController extends AbstractController
     }
 
     /**
+     * 校验凭据并建立登录会话。
      * 用户登录接口。
      *
      * 从请求中读取 username 和 password，委托 AuthService 校验并创建 Redis 登录缓存。
@@ -39,6 +41,7 @@ class AuthController extends AbstractController
     }
 
     /**
+     * 注销当前登录会话。
      * 用户退出接口。
      *
      * 优先从 Authorization Bearer 头读取 token，缺失时再从请求参数 token 读取。
@@ -55,6 +58,7 @@ class AuthController extends AbstractController
     }
 
     /**
+     * 执行 `registerRandom` 方法对应的业务处理。
      * 注册单个随机测试用户。
      *
      * 每次访问只生成并同步写入 1 个用户，不再走 Redis Stream 批量队列。
@@ -71,6 +75,7 @@ class AuthController extends AbstractController
     }
 
     /**
+     * 执行 `tokenFromRequest` 方法对应的业务处理。
      * 从当前请求提取登录 token。
      *
      * @return string 解析到的 token；未提供时返回空字符串。
@@ -86,6 +91,7 @@ class AuthController extends AbstractController
     }
 
     /**
+     * 执行 `authError` 方法对应的业务处理。
      * 将认证异常转换为统一 JSON 错误响应。
      *
      * @param AuthException $exception 认证服务抛出的业务异常。

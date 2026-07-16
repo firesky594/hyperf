@@ -5,7 +5,9 @@ use Hyperf\DbConnection\Db;
 /** 维护应用、访问凭据、API 订阅及额度审计的数据结构。 */
 final class ApplicationSchemaService
 {
+ /** 初始化当前组件所需的依赖。 */
  public function __construct(private Db $db){}
+ /** 创建或升级当前模块所需的数据表。 */
  public function ensureSchema():void{foreach([
 "CREATE TABLE IF NOT EXISTS `buyer_applications` (`id` BIGINT UNSIGNED NOT NULL,`buyer_profile_id` BIGINT UNSIGNED NOT NULL,`name` VARCHAR(128) NOT NULL,`status` VARCHAR(16) NOT NULL DEFAULT 'active',`created_at` TIMESTAMP NULL,`updated_at` TIMESTAMP NULL,`deleted_at` TIMESTAMP NULL,PRIMARY KEY(`id`),KEY `idx_buyer_apps`(`buyer_profile_id`,`deleted_at`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 "CREATE TABLE IF NOT EXISTS `application_credentials` (`id` BIGINT UNSIGNED NOT NULL,`application_id` BIGINT UNSIGNED NOT NULL,`key_prefix` VARCHAR(32) NOT NULL,`secret_hash` CHAR(64) NOT NULL,`status` VARCHAR(16) NOT NULL DEFAULT 'active',`revoked_at` TIMESTAMP NULL,`created_at` TIMESTAMP NULL,`updated_at` TIMESTAMP NULL,`deleted_at` TIMESTAMP NULL,PRIMARY KEY(`id`),UNIQUE KEY `uniq_app_key_prefix`(`key_prefix`),KEY `idx_app_credentials`(`application_id`,`status`,`deleted_at`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",

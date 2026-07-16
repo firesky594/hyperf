@@ -15,6 +15,7 @@ class AuthSetupCommand extends Command
     protected string $description = 'Create auth tables and seed a demo user.';
 
     /**
+     * 初始化当前组件所需的依赖。
      * 初始化认证数据准备命令。
      *
      * @param Db $db MySQL 访问入口，用于创建用户表和写入测试用户。
@@ -28,6 +29,7 @@ class AuthSetupCommand extends Command
     }
 
     /**
+     * 执行当前控制台命令。
      * 执行认证数据初始化。
      *
      * 该命令会先确保 users 表存在，再根据命令参数创建或更新一个测试用户。
@@ -53,6 +55,7 @@ class AuthSetupCommand extends Command
     }
 
     /**
+     * 创建 `createUsersTable` 方法对应的数据或业务状态。
      * 创建用户表。
      *
      * users.id 使用 BIGINT UNSIGNED 存储雪花 ID，不使用 MySQL 自增主键。
@@ -75,6 +78,7 @@ SQL);
     }
 
     /**
+     * 执行 `upsertDemoUser` 方法对应的业务处理。
      * 创建或更新测试用户。
      *
      * 用户存在时只刷新密码哈希和更新时间；用户不存在时使用雪花 ID 创建新记录。

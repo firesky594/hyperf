@@ -9,11 +9,13 @@ use Hyperf\DbConnection\Db;
 /** 根据管理员角色与权限状态执行后台服务端授权。 */
 class AdminAuthorizationService
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private Db $db)
     {
     }
 
     /**
+     * 判断当前节点角色是否允许指定能力。
      * @param array<string,mixed> $session
      */
     public function allows(array $session, string $permissionCode): bool

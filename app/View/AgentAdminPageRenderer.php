@@ -20,6 +20,7 @@ class AgentAdminPageRenderer
 {
     private const TIMEZONE = 'Asia/Shanghai';
 
+    /** 校验凭据并建立登录会话。 */
     public function login(string $csrfToken, string $username = '', string $error = ''): string
     {
         $csrfToken = $this->escape($csrfToken);
@@ -109,6 +110,7 @@ HTML;
     }
 
     /**
+     * 执行 `home` 方法对应的业务处理。
      * @param array{admin_id?: mixed, username?: mixed, issued_at?: mixed, expires_at?: mixed, csrf_token?: mixed} $session
      */
     public function home(array $session): string
@@ -281,6 +283,7 @@ HTML;
     }
 
     /**
+     * 执行 `management` 方法对应的业务处理。
      * @param array{admin_id?: mixed, username?: mixed, csrf_token?: mixed} $session
      */
     public function management(string $module, array $session, array $rows = []): string
@@ -349,7 +352,7 @@ HTML;
 HTML;
     }
 
-    /** @param list<array<string,mixed>> $rows */
+    /** 执行 `managementContent` 方法对应的业务处理。 @param list<array<string,mixed>> $rows */
     private function managementContent(string $module, array $rows, string $csrfToken): string
     {
         $actions = [
@@ -383,7 +386,7 @@ HTML;
         return '<section class="management-data" aria-labelledby="data-heading"><div><p class="eyebrow">LIVE DATABASE</p><h2 id="data-heading">管理数据</h2></div>' . $form . '<div class="data-list">' . $items . '</div></section>';
     }
 
-    /** @param array<string,mixed> $row */
+    /** 执行 `managementRowActions` 方法对应的业务处理。 @param array<string,mixed> $row */
     private function managementRowActions(string $module, array $row, string $csrf): string
     {
         if ($module === 'audit') { return ''; }
@@ -399,11 +402,13 @@ HTML;
         return '<div class="row-actions">' . $update . $status . '</div>';
     }
 
+    /** 执行 `unavailable` 方法对应的业务处理。 */
     public function unavailable(string $message = '后台服务暂时不可用，请稍后再试。'): string
     {
         return $this->error(503, $message);
     }
 
+    /** 执行 `password` 方法对应的业务处理。 */
     public function password(string $csrfToken, bool $forced, string $error = ''): string
     {
         $csrfToken = $this->escape($csrfToken);
@@ -448,6 +453,7 @@ HTML;
 HTML;
     }
 
+    /** 执行 `error` 方法对应的业务处理。 */
     public function error(int $status, string $message): string
     {
         $message = $this->escape($message);
@@ -491,11 +497,13 @@ HTML;
 HTML;
     }
 
+    /** 转义 `escape` 方法对应的数据或业务状态。 */
     private function escape(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
+    /** 执行 `managementNavigation` 方法对应的业务处理。 */
     private function managementNavigation(string $active): string
     {
         $items = [
@@ -516,6 +524,7 @@ HTML;
         return $html;
     }
 
+    /** 格式化 `formatTimestamp` 方法对应的数据或业务状态。 */
     private function formatTimestamp(int $timestamp): string
     {
         return (new DateTimeImmutable('@' . $timestamp))
@@ -523,6 +532,7 @@ HTML;
             ->format('Y-m-d H:i:s');
     }
 
+    /** 执行 `styles` 方法对应的业务处理。 */
     private function styles(): string
     {
         return <<<'CSS'

@@ -7,4 +7,6 @@ if qps>=tonumber(ARGV[1]) or used>=tonumber(ARGV[2]) then return {0,qps,used} en
 qps=redis.call('INCR',KEYS[1]); if qps==1 then redis.call('EXPIRE',KEYS[1],1) end
 used=redis.call('INCR',KEYS[2]); if used==1 then redis.call('EXPIRE',KEYS[2],ARGV[3]) end
 return {1,qps,used}
-LUA;public function __construct(private Redis$redis){} /** @return array{allowed:bool,qps:int,used:int} */public function consume(int$id,int$qps,int$period,int$seconds):array{$tag='{sub:'.$id.'}';$r=$this->redis->eval(self::LUA,['uniapi:'.$tag.':qps','uniapi:'.$tag.':period',(string)$qps,(string)$period,(string)$seconds],2);if(!is_array($r)||count($r)<3)throw new \RuntimeException('Quota backend unavailable.');return['allowed'=>(int)$r[0]===1,'qps'=>(int)$r[1],'used'=>(int)$r[2]];}}
+LUA;/** 初始化当前组件所需的依赖。 */
+public function __construct(private Redis$redis){} /** 执行 `consume` 方法对应的业务处理。 @return array{allowed:bool,qps:int,used:int} */
+public function consume(int$id,int$qps,int$period,int$seconds):array{$tag='{sub:'.$id.'}';$r=$this->redis->eval(self::LUA,['uniapi:'.$tag.':qps','uniapi:'.$tag.':period',(string)$qps,(string)$period,(string)$seconds],2);if(!is_array($r)||count($r)<3)throw new \RuntimeException('Quota backend unavailable.');return['allowed'=>(int)$r[0]===1,'qps'=>(int)$r[1],'used'=>(int)$r[2]];}}

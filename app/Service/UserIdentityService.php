@@ -12,9 +12,10 @@ use Hyperf\DbConnection\Db;
 /** 查询用户工作台身份并处理供应商身份申请和资料维护。 */
 class UserIdentityService
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private Db $db, private IdGeneratorInterface $ids) {}
 
-    /** @return array{buyer:?array<string,mixed>,supplier:?array<string,mixed>} */
+    /** 执行 `workspace` 方法对应的业务处理。 @return array{buyer:?array<string,mixed>,supplier:?array<string,mixed>} */
     public function workspace(int $userId): array
     {
         if ($userId <= 0) { throw AuthException::badRequest('User identity is invalid.'); }
@@ -23,6 +24,7 @@ class UserIdentityService
         return ['buyer' => $this->row($buyer), 'supplier' => $this->row($supplier)];
     }
 
+    /** 申请 `applySupplier` 方法对应的数据或业务状态。 */
     public function applySupplier(int $userId, string $company, string $contact, string $email): int
     {
         [$company, $contact, $email] = $this->supplierFields($company, $contact, $email);
@@ -34,13 +36,14 @@ class UserIdentityService
         });
     }
 
+    /** 更新 `updateSupplier` 方法对应的数据或业务状态。 */
     public function updateSupplier(int $userId, string $company, string $contact, string $email): void
     {
         [$company, $contact, $email] = $this->supplierFields($company, $contact, $email);
         if ($this->db->update('UPDATE `supplier_profiles` SET `company_name` = ?, `contact_name` = ?, `contact_email` = ?, `updated_at` = CURRENT_TIMESTAMP WHERE `user_id` = ? AND `deleted_at` IS NULL', [$company, $contact, $email, $userId]) !== 1) { throw AuthException::badRequest('Supplier profile does not exist.'); }
     }
 
-    /** @return array{string,string,string} */
+    /** 执行 `supplierFields` 方法对应的业务处理。 @return array{string,string,string} */
     private function supplierFields(string $company, string $contact, string $email): array
     {
         $company = trim($company); $contact = trim($contact); $email = trim($email);
@@ -48,6 +51,6 @@ class UserIdentityService
         return [$company, $contact, $email];
     }
 
-    /** @return ?array<string,mixed> */
+    /** 执行 `row` 方法对应的业务处理。 @return ?array<string,mixed> */
     private function row(object|array|null $row): ?array { return $row === null ? null : (is_object($row) ? get_object_vars($row) : $row); }
 }

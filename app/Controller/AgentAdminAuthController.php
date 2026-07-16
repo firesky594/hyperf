@@ -22,6 +22,7 @@ use Psr\Http\Message\ResponseInterface;
 /** 处理后台管理员登录、退出与会话 Cookie。 */
 class AgentAdminAuthController extends AbstractController
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private AdminAuthService $auth,
         private AgentAdminPageRenderer $pages,
@@ -30,6 +31,7 @@ class AgentAdminAuthController extends AbstractController
     ) {
     }
 
+    /** 渲染登录页面。 */
     public function loginPage(): ResponseInterface
     {
         $rawSessionToken = $this->request->getCookieParams()['agent_admin_session'] ?? '';
@@ -53,6 +55,7 @@ class AgentAdminAuthController extends AbstractController
         );
     }
 
+    /** 校验凭据并建立登录会话。 */
     public function login(): ResponseInterface
     {
         $rawUsername = $this->request->input('username', '');
@@ -109,6 +112,7 @@ class AgentAdminAuthController extends AbstractController
         }
     }
 
+    /** 注销当前登录会话。 */
     public function logout(): ResponseInterface
     {
         try {
@@ -134,11 +138,13 @@ class AgentAdminAuthController extends AbstractController
         }
     }
 
+    /** 执行 `newFormToken` 方法对应的业务处理。 */
     private function newFormToken(): string
     {
         return bin2hex(random_bytes(32));
     }
 
+    /** 执行 `errorPage` 方法对应的业务处理。 */
     private function errorPage(AdminAuthException $exception, string $event): ResponseInterface
     {
         $this->logInfrastructureFailure($exception, $event);
@@ -149,6 +155,7 @@ class AgentAdminAuthController extends AbstractController
         );
     }
 
+    /** 校验 `validateLoginInput` 方法对应的数据或业务状态。 */
     private function validateLoginInput(string $username, string $password): void
     {
         if (
@@ -160,6 +167,7 @@ class AgentAdminAuthController extends AbstractController
         }
     }
 
+    /** 执行 `logInfrastructureFailure` 方法对应的业务处理。 */
     private function logInfrastructureFailure(AdminAuthException $exception, string $event): void
     {
         if ($exception->status() !== 503) {

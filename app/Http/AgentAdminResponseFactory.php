@@ -42,10 +42,12 @@ class AgentAdminResponseFactory
         'Content-Security-Policy' => self::CONTENT_SECURITY_POLICY,
     ];
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private ResponseInterface $response)
     {
     }
 
+    /** 渲染登录页面。 */
     public function loginPage(string $html, string $csrfToken, int $status = 200): PsrResponseInterface
     {
         $cookie = $this->cookie(
@@ -63,11 +65,13 @@ class AgentAdminResponseFactory
         );
     }
 
+    /** 生成带安全响应头的 HTML 响应。 */
     public function html(string $html, int $status = 200): PsrResponseInterface
     {
         return $this->secure($this->response->html($html)->withStatus($status));
     }
 
+    /** 生成安全的 HTTP 跳转响应。 */
     public function redirect(string $path, int $status = 302): PsrResponseInterface
     {
         $this->assertRelativePath($path);
@@ -80,6 +84,7 @@ class AgentAdminResponseFactory
         );
     }
 
+    /** 执行 `redirectWithSession` 方法对应的业务处理。 */
     public function redirectWithSession(string $path, string $token, int $expiresAt): PsrResponseInterface
     {
         $this->assertRelativePath($path);
@@ -94,6 +99,7 @@ class AgentAdminResponseFactory
         );
     }
 
+    /** 执行 `redirectClearingSession` 方法对应的业务处理。 */
     public function redirectClearingSession(string $path, int $status = 302): PsrResponseInterface
     {
         $this->assertRelativePath($path);
@@ -108,6 +114,7 @@ class AgentAdminResponseFactory
         );
     }
 
+    /** 生成受保护的会话 Cookie。 */
     private function cookie(string $name, string $value, int $expiresAt, string $path): Cookie
     {
         return new Cookie(
@@ -121,16 +128,19 @@ class AgentAdminResponseFactory
         );
     }
 
+    /** 执行 `cookieSecure` 方法对应的业务处理。 */
     private function cookieSecure(): bool
     {
         return filter_var(env('ADMIN_COOKIE_SECURE', false), FILTER_VALIDATE_BOOLEAN);
     }
 
+    /** 执行 `loginCsrfTtl` 方法对应的业务处理。 */
     private function loginCsrfTtl(): int
     {
         return max(1, (int) env('ADMIN_LOGIN_CSRF_TTL', self::DEFAULT_LOGIN_CSRF_TTL));
     }
 
+    /** 执行 `assertRelativePath` 方法对应的业务处理。 */
     private function assertRelativePath(string $path): void
     {
         if (
@@ -144,6 +154,7 @@ class AgentAdminResponseFactory
         }
     }
 
+    /** 执行 `secure` 方法对应的业务处理。 */
     private function secure(PsrResponseInterface $response): PsrResponseInterface
     {
         foreach (self::SECURITY_HEADERS as $name => $value) {

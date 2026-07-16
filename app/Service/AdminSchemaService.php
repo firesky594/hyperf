@@ -9,10 +9,12 @@ use Hyperf\DbConnection\Db;
 /** 创建并升级后台管理员、RBAC、菜单和永久审计数据结构。 */
 class AdminSchemaService
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private Db $db)
     {
     }
 
+    /** 创建或升级当前模块所需的数据表。 */
     public function ensureSchema(): void
     {
         foreach ($this->statements() as $statement) {
@@ -21,6 +23,7 @@ class AdminSchemaService
         $this->upgradeLegacyAdminUsers();
     }
 
+    /** 执行 `upgradeLegacyAdminUsers` 方法对应的业务处理。 */
     private function upgradeLegacyAdminUsers(): void
     {
         $columns = [];
@@ -40,6 +43,7 @@ class AdminSchemaService
     }
 
     /**
+     * 执行 `statements` 方法对应的业务处理。
      * @return list<string>
      */
     private function statements(): array

@@ -18,10 +18,12 @@ class AdminPasswordChangeMiddleware implements MiddlewareInterface
         '/agent_admin/logout',
     ];
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private AgentAdminResponseFactory $responses)
     {
     }
 
+    /** 处理监听到的事件。 */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $session = $request->getAttribute('admin_session');

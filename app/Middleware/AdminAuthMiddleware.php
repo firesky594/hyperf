@@ -25,6 +25,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /** 校验后台会话并把管理员登录态注入当前请求。 */
 class AdminAuthMiddleware implements MiddlewareInterface
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private AdminAuthService $auth,
         private AgentAdminPageRenderer $pages,
@@ -33,6 +34,7 @@ class AdminAuthMiddleware implements MiddlewareInterface
     ) {
     }
 
+    /** 处理监听到的事件。 */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $rawToken = $request->getCookieParams()['agent_admin_session'] ?? '';
@@ -62,6 +64,7 @@ class AdminAuthMiddleware implements MiddlewareInterface
         }
     }
 
+    /** 执行 `logInfrastructureFailure` 方法对应的业务处理。 */
     private function logInfrastructureFailure(AdminAuthException $exception): void
     {
         if ($exception->status() !== 503) {

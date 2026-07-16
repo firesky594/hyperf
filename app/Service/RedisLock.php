@@ -17,10 +17,12 @@ end
 return 0
 LUA;
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private Redis $redis)
     {
     }
 
+    /** 尝试获取分布式锁并返回锁句柄。 */
     public function acquire(string $key, int $ttl): ?RedisLockHandle
     {
         if ($ttl <= 0) {
@@ -37,6 +39,7 @@ LUA;
         return new RedisLockHandle($key, $value);
     }
 
+    /** 校验所有权令牌并释放分布式锁。 */
     public function release(RedisLockHandle $handle): bool
     {
         return (int) $this->redis->eval(self::RELEASE_SCRIPT, [$handle->key, $handle->value], 1) === 1;

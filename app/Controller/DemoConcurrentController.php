@@ -9,10 +9,12 @@ use App\Service\DemoConcurrentService;
 /** 展示 MySQL 与 Redis 并发访问结果的本地运行环境诊断接口。 */
 class DemoConcurrentController extends AbstractController
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private DemoConcurrentService $service)
     {
     }
 
+    /** 处理当前模块的默认入口请求。 */
     public function index(): array
     {
         return $this->service->run();

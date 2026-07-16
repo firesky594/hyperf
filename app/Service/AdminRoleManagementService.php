@@ -12,6 +12,7 @@ use Hyperf\DbConnection\Db;
 /** 维护后台角色及其权限集合和启停状态。 */
 class AdminRoleManagementService
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $ids,
@@ -19,7 +20,7 @@ class AdminRoleManagementService
     ) {
     }
 
-    /** @return list<array<string,mixed>> */
+    /** 查询 `listRoles` 方法对应的数据或业务状态。 @return list<array<string,mixed>> */
     public function listRoles(): array
     {
         $rows = $this->db->select(<<<'SQL'
@@ -45,7 +46,7 @@ SQL);
         }, $rows);
     }
 
-    /** @param array<string,mixed> $auditContext */
+    /** 创建 `createRole` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
     public function createRole(string $name, string $code, string $description, array $auditContext): int
     {
         [$name, $code, $description] = $this->validatedRoleFields($name, $code, $description);
@@ -80,7 +81,7 @@ SQL);
         });
     }
 
-    /** @param array<string,mixed> $auditContext */
+    /** 更新 `updateRole` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
     public function updateRole(
         int $roleId,
         string $name,
@@ -122,7 +123,7 @@ SQL);
         });
     }
 
-    /** @param array<string,mixed> $auditContext */
+    /** 设置 `setStatus` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
     public function setStatus(int $roleId, bool $enabled, array $auditContext): void
     {
         if ($roleId <= 0) {
@@ -147,7 +148,7 @@ SQL);
         });
     }
 
-    /** @param list<int> $permissionIds @param array<string,mixed> $auditContext */
+    /** 执行 `assignPermissions` 方法对应的业务处理。 @param list<int> $permissionIds @param array<string,mixed> $auditContext */
     public function assignPermissions(int $roleId, array $permissionIds, array $auditContext): void
     {
         $permissionIds = array_values(array_unique(array_map('intval', $permissionIds)));
@@ -196,6 +197,7 @@ SQL);
         });
     }
 
+    /** 执行 `lockedRole` 方法对应的业务处理。 */
     private function lockedRole(ConnectionInterface $connection, int $roleId): object
     {
         $role = $connection->selectOne(
@@ -209,7 +211,7 @@ SQL);
         return $role;
     }
 
-    /** @return array{string,string,string} */
+    /** 校验 `validatedRoleFields` 方法对应的数据或业务状态。 @return array{string,string,string} */
     private function validatedRoleFields(string $name, string $code, string $description): array
     {
         $name = trim($name);
@@ -225,6 +227,7 @@ SQL);
     }
 
     /**
+     * 执行 `event` 方法对应的业务处理。
      * @param array<string,mixed> $context
      * @param array<string,mixed> $requestData
      * @return array<string,mixed>

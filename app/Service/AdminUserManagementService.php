@@ -16,6 +16,7 @@ class AdminUserManagementService
 
     private $temporaryPasswordGenerator;
 
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(
         private Db $db,
         private IdGeneratorInterface $ids,
@@ -31,6 +32,7 @@ class AdminUserManagementService
     }
 
     /**
+     * 创建 `createAdministrator` 方法对应的数据或业务状态。
      * @param array<string,mixed> $auditContext
      * @return array{id:int,username:string,temporary_password:string}
      */
@@ -74,7 +76,7 @@ class AdminUserManagementService
         });
     }
 
-    /** @return list<array<string,mixed>> */
+    /** 查询 `listAdministrators` 方法对应的数据或业务状态。 @return list<array<string,mixed>> */
     public function listAdministrators(): array
     {
         $rows = $this->db->select(<<<'SQL'
@@ -102,7 +104,7 @@ SQL);
         }, $rows);
     }
 
-    /** @param array<string,mixed> $auditContext */
+    /** 设置 `setStatus` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
     public function setStatus(int $adminId, bool $enabled, array $auditContext): void
     {
         if ($adminId <= 0) {
@@ -148,7 +150,7 @@ SQL);
         }
     }
 
-    /** @param array<string,mixed> $auditContext */
+    /** 更新 `updateAdministrator` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
     public function updateAdministrator(int $adminId, string $username, array $auditContext): void
     {
         $username = trim($username);
@@ -162,7 +164,7 @@ SQL);
         });
     }
 
-    /** @param list<int> $roleIds @param array<string,mixed> $auditContext */
+    /** 执行 `assignRoles` 方法对应的业务处理。 @param list<int> $roleIds @param array<string,mixed> $auditContext */
     public function assignRoles(int $adminId, array $roleIds, array $auditContext): void
     {
         $roleIds = array_values(array_unique(array_map('intval', $roleIds)));
@@ -207,7 +209,7 @@ SQL);
         });
     }
 
-    /** @param array<string,mixed> $auditContext */
+    /** 重置 `resetPassword` 方法对应的数据或业务状态。 @param array<string,mixed> $auditContext */
     public function resetPassword(int $adminId, array $auditContext): string
     {
         if ($adminId <= 0) {
@@ -245,6 +247,7 @@ SQL);
         return $temporaryPassword;
     }
 
+    /** 执行 `lockedAdministrator` 方法对应的业务处理。 */
     private function lockedAdministrator(ConnectionInterface $connection, int $adminId): object
     {
         $administrator = $connection->selectOne(
@@ -260,6 +263,7 @@ SQL);
     }
 
     /**
+     * 执行 `event` 方法对应的业务处理。
      * @param array<string,mixed> $context
      * @param array<string,mixed> $requestData
      * @return array<string,mixed>

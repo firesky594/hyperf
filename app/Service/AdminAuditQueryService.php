@@ -11,9 +11,10 @@ use Throwable;
 /** 查询只追加且永久保存的后台操作审计记录。 */
 class AdminAuditQueryService
 {
+    /** 初始化当前组件所需的依赖。 */
     public function __construct(private Db $db) {}
 
-    /** @return list<array<string,mixed>> */
+    /** 执行 `search` 方法对应的业务处理。 @return list<array<string,mixed>> */
     public function search(string $action = ''): array
     {
         try {
