@@ -88,6 +88,14 @@ foreach (['/workspace/buyer/apps/create'=>'create','/workspace/buyer/apps/reset'
 foreach (['/workspace/gateway/routes'=>'routes','/workspace/gateway/calls'=>'calls','/workspace/gateway/usage'=>'usage','/workspace/gateway/nodes'=>'nodes'] as $path=>$action) {
     Router::get($path,'App\\Controller\\GatewayStatusController@'.$action,['middleware'=>[UserAuthMiddleware::class]]);
 }
+foreach (['/workspace/buyer/billing'=>'invoices','/workspace/buyer/billing/proof'=>'proofPage','/workspace/supplier/settlements'=>'settlements'] as $path=>$action) {
+    Router::get($path,'App\\Controller\\BillingController@'.$action,['middleware'=>[UserAuthMiddleware::class]]);
+}
+Router::post('/workspace/buyer/billing/proof','App\\Controller\\BillingController@proof',['middleware'=>[UserAuthMiddleware::class]]);
+Router::get('/agent_admin/billing','App\\Controller\\BillingAdminController@index',['middleware'=>[AdminAuthMiddleware::class,AdminPasswordChangeMiddleware::class,AdminPermissionMiddleware::class]]);
+foreach (['/agent_admin/billing/payment-confirm'=>'confirmPayment','/agent_admin/billing/commission'=>'commission','/agent_admin/billing/settlement-confirm'=>'settlement'] as $path=>$action) {
+    Router::post($path,'App\\Controller\\BillingAdminController@'.$action,['middleware'=>[AdminAuthMiddleware::class,AdminPasswordChangeMiddleware::class,AdminPermissionMiddleware::class]]);
+}
 
 Router::get('/favicon.ico', function () {
     return '';

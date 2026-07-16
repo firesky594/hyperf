@@ -39,6 +39,10 @@ final class AdminRouteRegistry
             $this->route('POST', '/agent_admin/menus/update', 'App\\Controller\\AgentAdminMenuController@update', 'menus.update', '编辑菜单'),
             $this->route('POST', '/agent_admin/menus/status', 'App\\Controller\\AgentAdminMenuController@status', 'menus.status', '启停菜单'),
             $this->route('GET', '/agent_admin/audit', 'App\\Controller\\AgentAdminAuditController@index', 'audit.view', '查看操作日志'),
+            $this->route('GET', '/agent_admin/billing', 'App\\Controller\\BillingAdminController@index', 'billing.view', '查看付款与结算'),
+            $this->route('POST', '/agent_admin/billing/payment-confirm', 'App\\Controller\\BillingAdminController@confirmPayment', 'billing.payment-confirm', '确认付款'),
+            $this->route('POST', '/agent_admin/billing/commission', 'App\\Controller\\BillingAdminController@commission', 'billing.commission', '设置供应商佣金'),
+            $this->route('POST', '/agent_admin/billing/settlement-confirm', 'App\\Controller\\BillingAdminController@settlement', 'billing.settlement-confirm', '确认供应商结算'),
         ];
     }
 
