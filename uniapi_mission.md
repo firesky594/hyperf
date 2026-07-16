@@ -5,9 +5,9 @@
 ## 1. 当前状态
 
 - 当前分支：`main`。
-- 当前阶段：M2 管理员与 RBAC 闭环 / 管理员 CRUD 服务。
-- 最近业务提交：`a3d4cba 功能：建立后台永久审计写入基线`。
-- 最近完整验证：`composer test` 为 131 tests / 980 assertions；`composer analyse` 为 0 errors。
+- 当前阶段：M2 管理员与 RBAC 闭环 / 角色 CRUD 服务。
+- 最近业务提交：`919524b 功能：实现管理员管理事务服务`。
+- 最近完整验证：`composer test` 为 136 tests / 989 assertions；`composer analyse` 为 0 errors。
 - 数据库状态：Schema 仅在单元测试中验证，未对运行中数据库执行变更。
 - 工作方式：Web 界面优先；完成步骤后更新本文档、中文提交并推送 `origin main`。
 
@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M2 第 4 步角色服务切片：先为角色列表、创建、编辑、启停和批量绑定权限编写 RED；写操作与 `AdminAuditService::append()` 共享事务。
+执行 M2 第 4 步权限管理服务切片：先为自定义权限列表、创建、编辑和启停编写 RED；系统路由权限不得通过管理服务改写代码或删除，所有写操作与 `AdminAuditService::append()` 共享事务。
 
 ## 6. 本轮证据
 
@@ -166,4 +166,10 @@
 - M2.4 管理员文件：`app/Service/AdminUserManagementService.php`、`test/Cases/AdminUserManagementServiceTest.php`；`AdminAuditService` 调整为可替换依赖以便验证事务协作。
 - M2.4 管理员验证：定向 6 tests / 11 assertions；完整回归 131 tests / 980 assertions；PHPStan 0 errors。
 - M2.4 风险：管理员 HTTP 表单与 CSRF 尚未接入，将在角色/权限/菜单服务完成后统一连接现有 Web 页面。
-- 下一断点：M2 第 4 步角色 CRUD 与批量权限绑定服务 RED。
+- M2.4 角色服务 RED：新增 5 个行为测试，全部正确失败于 `AdminRoleManagementService` 不存在。
+- M2.4 角色服务 GREEN：实现角色列表、创建、编辑、启停和批量绑定权限；关联通过软撤销/恢复替换，停用或软删除权限不可绑定。
+- M2.4 角色事务边界：创建、编辑、启停和权限绑定均与 `AdminAuditService::append()` 使用同一数据库事务。
+- M2.4 角色文件：`app/Service/AdminRoleManagementService.php`、`test/Cases/AdminRoleManagementServiceTest.php`。
+- M2.4 角色验证：定向 5 tests / 9 assertions；完整回归 136 tests / 989 assertions；PHPStan 0 errors。
+- M2.4 角色风险：尚未接入 HTTP 表单与运行中数据库；将在权限、菜单服务完成后统一连接 Web 页面并做受控验收。
+- 下一断点：M2 第 4 步自定义权限 CRUD 服务 RED；系统路由权限保持同步服务独占管理。
