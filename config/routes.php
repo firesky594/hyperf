@@ -85,6 +85,9 @@ foreach (['/workspace/buyer/apps'=>'applications','/workspace/buyer/subscription
 foreach (['/workspace/buyer/apps/create'=>'create','/workspace/buyer/apps/reset'=>'reset','/workspace/buyer/apps/revoke'=>'revoke','/workspace/buyer/subscriptions/create'=>'subscribe','/workspace/supplier/quotas/update'=>'quotaUpdate'] as $path=>$action) {
     Router::post($path,'App\\Controller\\ApplicationController@'.$action,['middleware'=>[UserAuthMiddleware::class]]);
 }
+foreach (['/workspace/gateway/routes'=>'routes','/workspace/gateway/calls'=>'calls','/workspace/gateway/usage'=>'usage','/workspace/gateway/nodes'=>'nodes'] as $path=>$action) {
+    Router::get($path,'App\\Controller\\GatewayStatusController@'.$action,['middleware'=>[UserAuthMiddleware::class]]);
+}
 
 Router::get('/favicon.ico', function () {
     return '';

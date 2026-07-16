@@ -92,14 +92,14 @@
 
 ### M6：分布式网关与计量
 
-**状态：未开始**
+**状态：已完成**
 
-1. [ ] Web 先行：网关路由、调用日志、用量与节点角色状态页。
-2. [ ] `APP_ROLE` 配置与 control-plane/gateway/metering/billing/notification/all-in-one 启动边界。
-3. [ ] 请求签名、防重放、上游路由和失败关闭错误码。
-4. [ ] Redis Cluster hash tag + Lua 原子 QPS/额度检查扣减，热路径无 KEYS/SCAN。
-5. [ ] Stream 计量事件、`event_id` 幂等落库、消费者组恢复与数据库重建测试。
-6. [ ] 完整测试、静态分析、中文提交并推送。
+1. [x] Web 先行：网关路由、调用日志、用量与节点角色状态页。
+2. [x] `APP_ROLE` 配置与 control-plane/gateway/metering/billing/notification/all-in-one 启动边界。
+3. [x] 请求签名、防重放、上游路由和失败关闭错误码。
+4. [x] Redis Cluster hash tag + Lua 原子 QPS/额度检查扣减，热路径无 KEYS/SCAN。
+5. [x] Stream 计量事件、`event_id` 幂等落库、消费者组恢复与数据库重建测试。
+6. [x] 完整测试、静态分析、中文提交并推送。
 
 ### M7：账单、宽限期与结算
 
@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M6 第 1 步 Web 页面切片：先为网关路由、调用日志、用量和节点角色状态页编写 RED。
+执行 M7 第 1 步 Web 页面切片：先为采购账单、付款凭证、平台确认和供应商结算页编写 RED。
 
 ## 6. 本轮证据
 
@@ -199,3 +199,7 @@
 - M5 完成：应用与一次性密钥、订阅、供应商额度页面和五张业务表闭环；密钥只存 SHA-256 摘要，重置撤销旧密钥，额度变更同事务永久审计。
 - M5 验证：定向 6 tests / 35 assertions；完整回归 169 tests / 1124 assertions；PHPStan 0 errors；运行容器 `uniapi:application-schema` 成功。
 - 下一断点：M6 第 1 步网关、调用日志、用量和节点角色状态页面 RED。
+- M6 完成：角色边界、密钥摘要解析与 HMAC 时间窗/nonce 防重放、HTTPS 上游路由、同槽 Lua QPS/周期额度、Stream 事件、幂等落库、消费者组恢复和数据库聚合重建闭环。
+- M6 review：修复 Lua 在 QPS 拒绝时仍消耗周期额度的问题；禁止上游 URL 内嵌凭据并强制 HTTPS；Redis 异常保持失败关闭。
+- M6 验证：定向 6 tests / 18 assertions；完整回归 175 tests / 1143 assertions；PHPStan 0 errors；运行容器 `uniapi:metering-schema` 成功。
+- 下一断点：M7 第 1 步采购账单、付款凭证、平台确认和供应商结算页 RED。

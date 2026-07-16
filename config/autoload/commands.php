@@ -16,6 +16,7 @@ use App\Command\AuthSetupCommand;
 use App\Command\BusinessIdentitySchemaCommand;
 use App\Command\CatalogSchemaCommand;
 use App\Command\ApplicationSchemaCommand;
+use App\Command\MeteringSchemaCommand;
 
 return [
     AuthSetupCommand::class,
@@ -25,4 +26,5 @@ return [
     BusinessIdentitySchemaCommand::class,
     CatalogSchemaCommand::class,
     ApplicationSchemaCommand::class,
+    MeteringSchemaCommand::class,
 ];
