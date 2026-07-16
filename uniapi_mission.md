@@ -5,10 +5,10 @@
 ## 1. 当前状态
 
 - 当前分支：`main`。
-- 当前阶段：M2 管理员与 RBAC 闭环 / 角色 CRUD 服务。
-- 最近业务提交：`919524b 功能：实现管理员管理事务服务`。
-- 最近完整验证：`composer test` 为 136 tests / 989 assertions；`composer analyse` 为 0 errors。
-- 数据库状态：Schema 仅在单元测试中验证，未对运行中数据库执行变更。
+- 当前阶段：M4 API 商品与市场 / Web 页面。
+- 最近业务提交：`76f5a3a 功能：闭环管理后台并完成双侧身份工作台`。
+- 最近完整验证：`composer test` 为 154 tests / 1035 assertions；`composer analyse` 为 0 errors。
+- 数据库状态：运行容器已成功执行管理员 Schema、22 项系统权限同步和双侧身份 Schema；随机注册真实事务返回 201。
 - 工作方式：Web 界面优先；完成步骤后更新本文档、中文提交并推送 `origin main`。
 
 ## 2. 已完成基线
@@ -52,23 +52,23 @@
 
 ### M2：管理员与 RBAC 闭环
 
-**状态：进行中**
+**状态：已完成**
 
 1. [x] 权限同步服务与命令：新增、恢复、停用系统权限，不覆盖自定义权限。
 2. [x] Web 先行：管理员、角色、权限、菜单、审计导航与真实空状态页面。
 3. [x] 多角色权限并集、角色/权限停用即时失效、超管服务端直通及权限中间件。
-4. [ ] 管理员、角色、权限、菜单 CRUD；所有写操作 POST + CSRF + 事务审计。
-5. [ ] 永久数据库全量审计、敏感字段过滤、只读检索页面和查询审计失败关闭。
-6. [ ] 完整测试、静态分析、更新记录、中文提交并推送。
+4. [x] 管理员、角色、权限、菜单 CRUD；所有写操作 POST + CSRF + 事务审计。
+5. [x] 永久数据库全量审计、敏感字段过滤、只读检索页面和查询审计失败关闭。
+6. [x] 完整测试、静态分析、更新记录、中文提交并推送。
 
 ### M3：双侧身份与工作台
 
-**状态：未开始**
+**状态：已完成**
 
-1. [ ] Web 先行：采购方、供应商工作台与身份切换入口。
-2. [ ] 新增业务身份/资料表，严格复用 `users` 而不混用 `admin_users`。
-3. [ ] 注册后自动创建采购方身份，供应商资料可申请/维护且不影响采购身份。
-4. [ ] 双工作台控制器、服务、认证边界、测试、中文提交并推送。
+1. [x] Web 先行：采购方、供应商工作台与身份切换入口。
+2. [x] 新增业务身份/资料表，严格复用 `users` 而不混用 `admin_users`。
+3. [x] 注册后自动创建采购方身份，供应商资料可申请/维护且不影响采购身份。
+4. [x] 双工作台控制器、服务、认证边界、测试、中文提交并推送。
 
 ### M4：API 商品与市场
 
@@ -123,7 +123,7 @@
 
 ## 5. 当前唯一任务
 
-执行 M2 第 4 步权限管理服务切片：先为自定义权限列表、创建、编辑和启停编写 RED；系统路由权限不得通过管理服务改写代码或删除，所有写操作与 `AdminAuditService::append()` 共享事务。
+执行 M4 第 1 步 Web 页面切片：先为供应商 API 管理/编辑页和采购方市场/详情页编写 RED；所有未接通数据必须显示真实空状态，不得提前实现 M4 Schema 或发布状态机。
 
 ## 6. 本轮证据
 
@@ -172,4 +172,15 @@
 - M2.4 角色文件：`app/Service/AdminRoleManagementService.php`、`test/Cases/AdminRoleManagementServiceTest.php`。
 - M2.4 角色验证：定向 5 tests / 9 assertions；完整回归 136 tests / 989 assertions；PHPStan 0 errors。
 - M2.4 角色风险：尚未接入 HTTP 表单与运行中数据库；将在权限、菜单服务完成后统一连接 Web 页面并做受控验收。
-- 下一断点：M2 第 4 步自定义权限 CRUD 服务 RED；系统路由权限保持同步服务独占管理。
+- M2 闭环：新增自定义权限与菜单管理服务、真实数据库列表/表单、POST 路由、会话 CSRF、管理员编辑和永久审计只读查询；系统权限仍由同步服务独占管理。
+- M2 查询安全：审计查询固定最多返回 100 条，数据库异常转换为 503，管理写操作继续递归过滤密码、Cookie、Token、Secret 与签名字段。
+- M2 运行兼容：真实数据库不支持 `ADD COLUMN IF NOT EXISTS`；已改为 `SHOW COLUMNS` 后按缺失列执行标准 ALTER，定向 2 tests / 39 assertions。
+- M2 运行验收：`admin:schema` 成功；`admin:permissions:sync` 创建 22 项系统权限，无恢复、停用或自定义冲突。
+- M3 Schema：新增 `buyer_profiles`、`supplier_profiles`，均使用雪花 ID、唯一 `user_id` 和三个生命周期时间字段；未引用 `admin_users`。
+- M3 注册事务：随机注册在同一 MySQL 事务写入 `users` 与默认采购方资料；真实 `/auth/register-random` 返回 201，一次性测试凭据临时文件已删除。
+- M3 双侧身份：供应商申请/维护只写 `supplier_profiles`，不改变采购身份；工作台同时展示两个独立身份状态。
+- M3 Web 与门禁：新增 `/portal/login`、`/workspace`、采购方/供应商工作台、身份切换入口和供应商申请/更新；Cookie 为 HttpOnly + SameSite Strict，同时支持 Bearer Token。
+- M3 HTTP 验收：绕过本机代理直连后登录页返回 200；未认证工作台返回 303 到 `/portal/login` 并清除无效会话 Cookie。
+- M2/M3 最终验证：`composer test` 为 154 tests / 1035 assertions；`composer analyse` 为 0 errors；`git diff --check` 无输出。
+- M2/M3 业务提交：`76f5a3a 功能：闭环管理后台并完成双侧身份工作台`。
+- 下一断点：M4 第 1 步 API 管理、市场和详情 Web 页面 RED，不提前创建 M4 数据表。
