@@ -282,7 +282,7 @@ HTML;
     /**
      * @param array{admin_id?: mixed, username?: mixed, csrf_token?: mixed} $session
      */
-    public function management(string $module, array $session): string
+    public function management(string $module, array $session, array $rows = []): string
     {
         $modules = [
             'administrators' => ['管理员管理', 'ADMINISTRATORS / 02', '维护独立后台管理员、状态、角色与临时密码。'],
@@ -301,6 +301,7 @@ HTML;
         $csrfToken = $this->escape((string) ($session['csrf_token'] ?? ''));
         $navigation = $this->managementNavigation($module);
         $styles = $this->styles();
+        $managementContent = $this->managementContent($module, $rows, $csrfToken);
 
         return <<<HTML
 <!doctype html>
@@ -338,17 +339,63 @@ HTML;
                 <div><p class="eyebrow">{$code}</p><h1 id="management-heading">{$heading}</h1><p class="lede">{$description}</p></div>
                 <div class="operator-chip" aria-label="当前管理员"><span>当前管理员</span><strong>{$username}</strong><small>ID / {$adminId}</small></div>
             </section>
-            <section class="boundary-panel management-empty" aria-labelledby="empty-heading">
-                <div><p class="eyebrow">DATA STATUS</p><h2 id="empty-heading">尚未接入数据库数据</h2></div>
-                <p>页面路由与视觉入口已可用。数据接入后将在此处显示；当前不生成演示记录，也不伪造统计结果。</p>
-                <span class="boundary-tag">EMPTY / VERIFIED</span>
-            </section>
+            {$managementContent}
         </main>
     </div>
     <footer class="site-footer console-footer"><span>UNIAPI / ADMIN CONTROL</span><span>RBAC · MENU · AUDIT</span></footer>
 </body>
 </html>
 HTML;
+    }
+
+    /** @param list<array<string,mixed>> $rows */
+    private function managementContent(string $module, array $rows, string $csrfToken): string
+    {
+        $actions = [
+            'administrators' => '/agent_admin/administrators/create',
+            'roles' => '/agent_admin/roles/create',
+            'permissions' => '/agent_admin/permissions/create',
+            'menus' => '/agent_admin/menus/create',
+        ];
+        $fields = match ($module) {
+            'administrators' => '<label>用户名<input name="username" required maxlength="64"></label>',
+            'roles' => '<label>角色名称<input name="name" required maxlength="64"></label><label>角色代码<input name="code" required maxlength="64"></label><label>说明<input name="description" maxlength="255"></label>',
+            'permissions' => '<label>权限名称<input name="name" required maxlength="96"></label><label>权限代码<input name="code" required maxlength="128"></label><label>说明<input name="description" maxlength="255"></label>',
+            'menus' => '<label>菜单名称<input name="name" required maxlength="64"></label><label>路由<input name="route_path" maxlength="255"></label><label>排序<input name="sort_order" type="number" value="0"></label>',
+            default => '',
+        };
+        $form = isset($actions[$module]) ? '<form class="management-form" action="' . $actions[$module] . '" method="post"><input type="hidden" name="_csrf" value="' . $csrfToken . '">' . $fields . '<button type="submit">写入 / COMMIT</button></form>' : '';
+        $items = '';
+        foreach ($rows as $row) {
+            $cells = [];
+            foreach ($row as $key => $value) {
+                if (is_scalar($value) || $value === null) {
+                    $cells[] = '<span><small>' . $this->escape((string) $key) . '</small>' . $this->escape((string) ($value ?? '—')) . '</span>';
+                }
+            }
+            $items .= '<article class="data-row">' . implode('', $cells) . $this->managementRowActions($module, $row, $csrfToken) . '</article>';
+        }
+        if ($items === '') {
+            $items = '<p class="data-empty">当前没有记录。</p>';
+        }
+
+        return '<section class="management-data" aria-labelledby="data-heading"><div><p class="eyebrow">LIVE DATABASE</p><h2 id="data-heading">管理数据</h2></div>' . $form . '<div class="data-list">' . $items . '</div></section>';
+    }
+
+    /** @param array<string,mixed> $row */
+    private function managementRowActions(string $module, array $row, string $csrf): string
+    {
+        if ($module === 'audit') { return ''; }
+        $id = (int) ($row['id'] ?? 0); if ($id <= 0) { return ''; }
+        $base = '/agent_admin/' . $module; $enabled = (int) ($row['status'] ?? 0) === 1;
+        $status = '<form method="post" action="' . $base . '/status"><input type="hidden" name="_csrf" value="' . $csrf . '"><input type="hidden" name="id" value="' . $id . '"><input type="hidden" name="enabled" value="' . ($enabled ? '0' : '1') . '"><button>' . ($enabled ? '停用' : '启用') . '</button></form>';
+        $update = match ($module) {
+            'administrators' => '<form method="post" action="' . $base . '/update"><input type="hidden" name="_csrf" value="' . $csrf . '"><input type="hidden" name="id" value="' . $id . '"><input name="username" value="' . $this->escape((string) ($row['username'] ?? '')) . '" required><button>保存</button></form>',
+            'roles', 'permissions' => '<form method="post" action="' . $base . '/update"><input type="hidden" name="_csrf" value="' . $csrf . '"><input type="hidden" name="id" value="' . $id . '"><input name="name" value="' . $this->escape((string) ($row['name'] ?? '')) . '" required><input name="code" value="' . $this->escape((string) ($row['code'] ?? '')) . '" required><input name="description" value="' . $this->escape((string) ($row['description'] ?? '')) . '"><button>保存</button></form>',
+            'menus' => '<form method="post" action="' . $base . '/update"><input type="hidden" name="_csrf" value="' . $csrf . '"><input type="hidden" name="id" value="' . $id . '"><input name="name" value="' . $this->escape((string) ($row['name'] ?? '')) . '" required><input name="route_path" value="' . $this->escape((string) ($row['route_path'] ?? '')) . '"><input name="sort_order" type="number" value="' . (int) ($row['sort_order'] ?? 0) . '"><button>保存</button></form>',
+            default => '',
+        };
+        return '<div class="row-actions">' . $update . $status . '</div>';
     }
 
     public function unavailable(string $message = '后台服务暂时不可用，请稍后再试。'): string
@@ -622,6 +669,18 @@ input[type="password"] {
     text-transform: uppercase;
     letter-spacing: .1em;
 }
+
+.management-data { margin-top: 28px; padding: 24px; border: 1px solid var(--rule); background: var(--ink-1); }
+.management-data h2 { margin: 0; }
+.management-form { margin: 22px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; align-items: end; }
+.management-form label { display: grid; gap: 7px; color: var(--muted-strong); font-size: 12px; }
+.management-form input { width: 100%; padding: 10px 12px; border: 1px solid var(--rule-strong); color: var(--text); background: var(--ink-0); }
+.management-form button { min-height: 44px; border: 1px solid var(--teal); color: var(--ink-0); background: var(--teal); font-weight: 800; cursor: pointer; }
+.data-list { display: grid; gap: 8px; }
+.data-row { padding: 14px; display: flex; flex-wrap: wrap; gap: 18px; border-left: 2px solid var(--teal); background: var(--ink-2); }
+.data-row span { display: grid; gap: 3px; color: var(--muted-strong); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.data-row small { color: var(--muted); text-transform: uppercase; }
+.data-empty { color: var(--muted); }
 
 .brand small {
     margin-top: 2px;

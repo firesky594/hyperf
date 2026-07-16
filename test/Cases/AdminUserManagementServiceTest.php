@@ -69,6 +69,18 @@ final class AdminUserManagementServiceTest extends TestCase
         self::addToAssertionCount(1);
     }
 
+    public function testUpdateAdministratorUsernameAuditsInTransaction(): void
+    {
+        [$service, $db, $connection, , $audit, $auth] = $this->dependencies();
+        $db->shouldReceive('transaction')->once()->andReturnUsing(fn (callable $callback) => $callback($connection));
+        $connection->shouldReceive('selectOne')->twice()->andReturn((object) ['id' => 52, 'username' => 'operator_2', 'is_super_admin' => 0], null);
+        $connection->shouldReceive('update')->once()->withArgs(fn (string $sql, array $bindings): bool => str_contains($sql, '`username` = ?') && $bindings === ['operator_renamed', 52])->andReturn(1);
+        $audit->shouldReceive('append')->once()->with($connection, Mockery::on(fn (array $event): bool => $event['action'] === 'administrator.update'));
+        $auth->shouldNotReceive('revokeAdminSessions');
+        $service->updateAdministrator(52, 'operator_renamed', $this->auditContext());
+        self::addToAssertionCount(1);
+    }
+
     public function testWelkinAndSuperAdministratorCannotBeDisabled(): void
     {
         [$service, $db, $connection, , $audit, $auth] = $this->dependencies();

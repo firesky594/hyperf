@@ -133,7 +133,7 @@ class AgentAdminPageRendererTest extends TestCase
         self::assertSame(1, substr_count($html, '<h1'));
     }
 
-    public function testManagementPagesExposeRbacNavigationAndHonestEmptyStates(): void
+    public function testManagementPagesExposeRbacNavigationAndRealManagementForms(): void
     {
         $renderer = new AgentAdminPageRenderer();
         $session = [
@@ -152,11 +152,12 @@ class AgentAdminPageRendererTest extends TestCase
         ];
 
         foreach ($pages as $key => [$heading, $path]) {
-            $html = $renderer->management($key, $session);
+            $html = $renderer->management($key, $session, [['id' => 1, 'name' => '记录一', 'code' => 'record.one']]);
             self::assertStringContainsString('<h1 id="management-heading">' . $heading . '</h1>', $html);
             self::assertStringContainsString('href="' . $path . '" aria-current="page"', $html);
-            self::assertStringContainsString('尚未接入数据库数据', $html);
-            self::assertStringContainsString('数据接入后将在此处显示', $html);
+            self::assertStringContainsString('管理数据', $html);
+            self::assertStringContainsString('记录一', $html);
+            self::assertStringContainsString('method="post"', $html);
             self::assertStringContainsString('name="_csrf" value="logout-token"', $html);
             self::assertSame(1, substr_count($html, '<h1'));
         }

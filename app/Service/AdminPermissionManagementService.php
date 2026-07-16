@@ -1,0 +1,87 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service;
+
+use App\Exception\AdminAuthException;
+use Hyperf\Contract\IdGeneratorInterface;
+use Hyperf\Database\ConnectionInterface;
+use Hyperf\DbConnection\Db;
+
+class AdminPermissionManagementService
+{
+    public function __construct(private Db $db, private IdGeneratorInterface $ids, private AdminAuditService $audit) {}
+
+    /** @return list<array<string,mixed>> */
+    public function listPermissions(): array
+    {
+        return array_map(static fn (object|array $row): array => is_object($row) ? get_object_vars($row) : $row,
+            $this->db->select('SELECT `id`, `name`, `code`, `source`, `route_method`, `route_path`, `description`, `status`, `created_at`, `updated_at` FROM `admin_permissions` WHERE `deleted_at` IS NULL ORDER BY `source` DESC, `code` ASC'));
+    }
+
+    /** @param array<string,mixed> $context */
+    public function createCustom(string $name, string $code, string $description, array $context): int
+    {
+        [$name, $code, $description] = $this->fields($name, $code, $description);
+        return $this->db->transaction(function (ConnectionInterface $connection) use ($name, $code, $description, $context): int {
+            if ($connection->selectOne('SELECT `id` FROM `admin_permissions` WHERE `code` = ? LIMIT 1 FOR UPDATE', [$code]) !== null) {
+                throw AdminAuthException::validation('Permission code already exists.');
+            }
+            $id = $this->ids->generate();
+            $connection->insert('INSERT INTO `admin_permissions` (`id`, `name`, `code`, `source`, `route_method`, `route_path`, `description`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES (?, ?, ?, \'custom\', NULL, NULL, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)', [$id, $name, $code, $description]);
+            $this->audit->append($connection, $this->event($context, 'permission.create', $id, ['name' => $name, 'code' => $code, 'description' => $description]));
+            return $id;
+        });
+    }
+
+    /** @param array<string,mixed> $context */
+    public function updateCustom(int $id, string $name, string $code, string $description, array $context): void
+    {
+        [$name, $code, $description] = $this->fields($name, $code, $description);
+        $this->db->transaction(function (ConnectionInterface $connection) use ($id, $name, $code, $description, $context): void {
+            $this->lockedCustom($connection, $id);
+            if ($connection->selectOne('SELECT `id` FROM `admin_permissions` WHERE `code` = ? AND `id` <> ? LIMIT 1 FOR UPDATE', [$code, $id]) !== null) {
+                throw AdminAuthException::validation('Permission code already exists.');
+            }
+            if ($connection->update('UPDATE `admin_permissions` SET `name` = ?, `code` = ?, `description` = ?, `updated_at` = CURRENT_TIMESTAMP WHERE `id` = ? AND `source` = \'custom\' AND `deleted_at` IS NULL', [$name, $code, $description, $id]) !== 1) {
+                throw AdminAuthException::unavailable('Unable to update permission.');
+            }
+            $this->audit->append($connection, $this->event($context, 'permission.update', $id, ['name' => $name, 'code' => $code, 'description' => $description]));
+        });
+    }
+
+    /** @param array<string,mixed> $context */
+    public function setStatus(int $id, bool $enabled, array $context): void
+    {
+        $this->db->transaction(function (ConnectionInterface $connection) use ($id, $enabled, $context): void {
+            $this->lockedCustom($connection, $id);
+            $status = $enabled ? 1 : 0;
+            if ($connection->update('UPDATE `admin_permissions` SET `status` = ?, `updated_at` = CURRENT_TIMESTAMP WHERE `id` = ? AND `source` = \'custom\' AND `deleted_at` IS NULL', [$status, $id]) !== 1) {
+                throw AdminAuthException::unavailable('Unable to update permission status.');
+            }
+            $this->audit->append($connection, $this->event($context, 'permission.status', $id, ['status' => $status]));
+        });
+    }
+
+    private function lockedCustom(ConnectionInterface $connection, int $id): object
+    {
+        if ($id <= 0) { throw AdminAuthException::validation(); }
+        $row = $connection->selectOne('SELECT `id`, `source` FROM `admin_permissions` WHERE `id` = ? AND `deleted_at` IS NULL LIMIT 1 FOR UPDATE', [$id]);
+        if (! is_object($row)) { throw AdminAuthException::validation('Permission does not exist.'); }
+        if ((string) $row->source !== 'custom') { throw AdminAuthException::validation('System permissions are managed by route synchronization.'); }
+        return $row;
+    }
+
+    /** @return array{string,string,string} */
+    private function fields(string $name, string $code, string $description): array
+    {
+        $name = trim($name); $code = trim($code); $description = trim($description);
+        if ($name === '' || mb_strlen($name) > 96 || preg_match('/^[a-z][a-z0-9._-]{2,127}$/D', $code) !== 1 || mb_strlen($description) > 255) { throw AdminAuthException::validation('Permission fields are invalid.'); }
+        return [$name, $code, $description];
+    }
+
+    /** @param array<string,mixed> $context @param array<string,mixed> $data @return array<string,mixed> */
+    private function event(array $context, string $action, int $id, array $data): array
+    { return $context + ['action' => $action, 'target_type' => 'admin_permission', 'target_id' => $id, 'request_data' => $data, 'result' => 'success', 'http_status' => 200]; }
+}

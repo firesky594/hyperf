@@ -15,6 +15,11 @@ namespace HyperfTest\Cases;
 use App\Exception\AdminAuthException;
 use App\Service\AdminAuthService;
 use App\Service\AdminPasswordService;
+use App\Service\AdminAuditQueryService;
+use App\Service\AdminMenuManagementService;
+use App\Service\AdminPermissionManagementService;
+use App\Service\AdminRoleManagementService;
+use App\Service\AdminUserManagementService;
 use Hyperf\Contract\ConfigInterface;
 use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\Framework\Logger\StdoutLogger;
@@ -382,6 +387,11 @@ class AgentAdminControllerTest extends TestCase
         $session = $this->session();
         $auth = $this->mock(AdminAuthService::class);
         $auth->shouldReceive('resolveSession')->times(5)->with($token)->andReturn($session);
+        $this->mock(AdminUserManagementService::class)->shouldReceive('listAdministrators')->once()->andReturn([]);
+        $this->mock(AdminRoleManagementService::class)->shouldReceive('listRoles')->once()->andReturn([]);
+        $this->mock(AdminPermissionManagementService::class)->shouldReceive('listPermissions')->once()->andReturn([]);
+        $this->mock(AdminMenuManagementService::class)->shouldReceive('listMenus')->once()->andReturn([]);
+        $this->mock(AdminAuditQueryService::class)->shouldReceive('search')->once()->with('')->andReturn([]);
         $pages = [
             '/agent_admin/administrators' => '管理员管理',
             '/agent_admin/roles' => '角色管理',
@@ -394,7 +404,7 @@ class AgentAdminControllerTest extends TestCase
             $response = $this->request('GET', $path, [], ['agent_admin_session' => $token]);
             self::assertSame(200, $response->getStatusCode(), $path);
             self::assertStringContainsString($heading, (string) $response->getBody());
-            self::assertStringContainsString('尚未接入数据库数据', (string) $response->getBody());
+            self::assertStringContainsString('管理数据', (string) $response->getBody());
             $this->assertSecurityHeaders($response);
         }
     }

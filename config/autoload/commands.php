@@ -13,10 +13,12 @@ use App\Command\AdminSetupCommand;
 use App\Command\AdminPermissionSyncCommand;
 use App\Command\AdminSchemaCommand;
 use App\Command\AuthSetupCommand;
+use App\Command\BusinessIdentitySchemaCommand;
 
 return [
     AuthSetupCommand::class,
     AdminSchemaCommand::class,
     AdminSetupCommand::class,
     AdminPermissionSyncCommand::class,
+    BusinessIdentitySchemaCommand::class,
 ];

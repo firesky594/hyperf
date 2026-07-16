@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Exception\AuthException;
 use Hyperf\Contract\IdGeneratorInterface;
+use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 use Hyperf\Redis\Redis;
 use Throwable;
@@ -84,6 +85,7 @@ class AuthService
                 'user_id' => (int) $user['id'],
                 'username' => (string) $user['username'],
                 'created_at' => time(),
+                'csrf_token' => bin2hex(random_bytes(32)),
             ], JSON_THROW_ON_ERROR);
 
             $cached = $this->redis->setex(self::TOKEN_PREFIX . $token, $this->tokenTtl, $payload);
@@ -131,13 +133,10 @@ class AuthService
             }
 
             try {
-                $inserted = $this->db->insert(
-                    'INSERT INTO users (id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
-                    [$id, $username, ($this->passwordHasher)($password)]
-                );
-                if ($inserted !== true) {
-                    throw AuthException::serviceUnavailable('Registration infrastructure unavailable.');
-                }
+                $this->db->transaction(function (ConnectionInterface $connection) use ($id, $username, $password): void {
+                    if ($connection->insert('INSERT INTO users (id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())', [$id, $username, ($this->passwordHasher)($password)]) !== true) { throw AuthException::serviceUnavailable('Registration infrastructure unavailable.'); }
+                    if ($connection->insert('INSERT INTO `buyer_profiles` (`id`, `user_id`, `display_name`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)', [$id, $id, $username]) !== true) { throw AuthException::serviceUnavailable('Registration infrastructure unavailable.'); }
+                });
 
                 return [
                     'status' => 'registered',
@@ -189,6 +188,20 @@ class AuthService
         } finally {
             $this->locks->release($handle);
         }
+    }
+
+    /** @return null|array{user_id:int,username:string,csrf_token:string} */
+    public function resolveToken(string $token): ?array
+    {
+        $token = trim($token);
+        if ($token === '') { return null; }
+        try {
+            $payload = $this->redis->get(self::TOKEN_PREFIX . $token);
+            if (! is_string($payload) || $payload === '') { return null; }
+            $session = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            if (! is_array($session) || (int) ($session['user_id'] ?? 0) <= 0 || ! is_string($session['username'] ?? null)) { return null; }
+            return ['user_id' => (int) $session['user_id'], 'username' => $session['username'], 'csrf_token' => is_string($session['csrf_token'] ?? null) ? $session['csrf_token'] : ''];
+        } catch (Throwable $throwable) { throw AuthException::serviceUnavailable('Authentication infrastructure unavailable.', $throwable); }
     }
 
     /**

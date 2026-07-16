@@ -17,6 +17,25 @@ class AdminSchemaService
         foreach ($this->statements() as $statement) {
             $this->db->statement($statement);
         }
+        $this->upgradeLegacyAdminUsers();
+    }
+
+    private function upgradeLegacyAdminUsers(): void
+    {
+        $columns = [];
+        foreach ($this->db->select('SHOW COLUMNS FROM `admin_users`') as $row) {
+            $data = is_object($row) ? get_object_vars($row) : (array) $row;
+            $columns[] = (string) ($data['Field'] ?? $data['field'] ?? '');
+        }
+        foreach ([
+            'is_super_admin' => 'TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER `status`',
+            'must_change_password' => 'TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER `is_super_admin`',
+            'deleted_at' => 'TIMESTAMP NULL DEFAULT NULL AFTER `updated_at`',
+        ] as $name => $definition) {
+            if (! in_array($name, $columns, true)) {
+                $this->db->statement('ALTER TABLE `admin_users` ADD COLUMN `' . $name . '` ' . $definition);
+            }
+        }
     }
 
     /**
@@ -42,12 +61,6 @@ CREATE TABLE IF NOT EXISTS `admin_users` (
   KEY `idx_admin_users_status` (`status`),
   KEY `idx_admin_users_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-SQL,
-            <<<'SQL'
-ALTER TABLE `admin_users`
-  ADD COLUMN IF NOT EXISTS `is_super_admin` TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER `status`,
-  ADD COLUMN IF NOT EXISTS `must_change_password` TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER `is_super_admin`,
-  ADD COLUMN IF NOT EXISTS `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `updated_at`
 SQL,
             <<<'SQL'
 CREATE TABLE IF NOT EXISTS `admin_roles` (

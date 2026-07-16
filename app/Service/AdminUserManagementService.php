@@ -147,6 +147,20 @@ SQL);
         }
     }
 
+    /** @param array<string,mixed> $auditContext */
+    public function updateAdministrator(int $adminId, string $username, array $auditContext): void
+    {
+        $username = trim($username);
+        if ($adminId <= 0 || preg_match('/^[A-Za-z0-9._-]{3,64}$/D', $username) !== 1 || $username === 'welkin') { throw AdminAuthException::validation('Administrator username is invalid or protected.'); }
+        $this->db->transaction(function (ConnectionInterface $connection) use ($adminId, $username, $auditContext): void {
+            $administrator = $this->lockedAdministrator($connection, $adminId);
+            if ((int) $administrator->is_super_admin === 1 || (string) $administrator->username === 'welkin') { throw AdminAuthException::validation('The permanent super administrator cannot be renamed.'); }
+            if ($connection->selectOne('SELECT `id` FROM `admin_users` WHERE `username` = ? AND `id` <> ? LIMIT 1 FOR UPDATE', [$username, $adminId]) !== null) { throw AdminAuthException::validation('Administrator username already exists.'); }
+            if ($connection->update('UPDATE `admin_users` SET `username` = ?, `updated_at` = CURRENT_TIMESTAMP WHERE `id` = ? AND `deleted_at` IS NULL', [$username, $adminId]) !== 1) { throw AdminAuthException::unavailable('Unable to update administrator.'); }
+            $this->audit->append($connection, $this->event($auditContext, 'administrator.update', $adminId, ['username' => $username]));
+        });
+    }
+
     /** @param list<int> $roleIds @param array<string,mixed> $auditContext */
     public function assignRoles(int $adminId, array $roleIds, array $auditContext): void
     {

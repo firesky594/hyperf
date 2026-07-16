@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service;
+
+use App\Exception\AdminAuthException;
+use Hyperf\DbConnection\Db;
+use Throwable;
+
+class AdminAuditQueryService
+{
+    public function __construct(private Db $db) {}
+
+    /** @return list<array<string,mixed>> */
+    public function search(string $action = ''): array
+    {
+        try {
+            $action = trim($action);
+            $where = $action === '' ? '' : ' WHERE `action` LIKE ?';
+            $bindings = $action === '' ? [] : [$action];
+            $rows = $this->db->select('SELECT `id`, `request_id`, `actor_admin_id`, `actor_username`, `action`, `target_type`, `target_id`, `request_method`, `request_path`, `request_summary`, `result`, `http_status`, `error_code`, `ip_address`, `duration_ms`, `created_at` FROM `admin_audit_logs`' . $where . ' ORDER BY `created_at` DESC, `id` DESC LIMIT 100', $bindings);
+            return array_map(static fn (object|array $row): array => is_object($row) ? get_object_vars($row) : $row, $rows);
+        } catch (Throwable $throwable) {
+            throw AdminAuthException::unavailable('Audit records are unavailable.', $throwable);
+        }
+    }
+}

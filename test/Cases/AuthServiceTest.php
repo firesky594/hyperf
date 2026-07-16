@@ -9,6 +9,7 @@ use App\Service\AuthService;
 use App\Service\RedisLock;
 use App\Service\RedisLockHandle;
 use Hyperf\Contract\IdGeneratorInterface;
+use Hyperf\Database\ConnectionInterface;
 use Hyperf\DbConnection\Db;
 use Hyperf\Redis\Redis;
 use Mockery;
@@ -145,6 +146,13 @@ class AuthServiceTest extends TestCase
         self::assertSame(['ok' => true], $result);
     }
 
+    public function testResolveTokenReturnsCachedUserSession(): void
+    {
+        $db = Mockery::mock(Db::class); $redis = Mockery::mock(Redis::class); $lock = Mockery::mock(RedisLock::class);
+        $redis->shouldReceive('get')->once()->with('auth:token:portal-token')->andReturn(json_encode(['user_id' => 7, 'username' => 'buyer_7'], JSON_THROW_ON_ERROR));
+        self::assertSame(['user_id' => 7, 'username' => 'buyer_7', 'csrf_token' => ''], $this->service($db, $redis, $lock)->resolveToken('portal-token'));
+    }
+
     public function testLogoutIsIdempotentWhenTokenIsAlreadyAbsent(): void
     {
         $db = Mockery::mock(Db::class);
@@ -204,6 +212,7 @@ class AuthServiceTest extends TestCase
         $lock = Mockery::mock(RedisLock::class);
         $idGenerator = Mockery::mock(IdGeneratorInterface::class);
         $capturedBindings = [];
+        $connection = Mockery::mock(ConnectionInterface::class);
         $lockKey = null;
 
         $idGenerator->shouldReceive('generate')->once()->withNoArgs()->andReturn(100001);
@@ -215,7 +224,8 @@ class AuthServiceTest extends TestCase
                 return str_starts_with($key, 'auth:register-lock:test_100001_') && $ttl === 10;
             })
             ->andReturnUsing(static fn (string $key): RedisLockHandle => new RedisLockHandle($key, 'lock-value'));
-        $db->shouldReceive('insert')
+        $db->shouldReceive('transaction')->once()->andReturnUsing(fn (callable $callback) => $callback($connection));
+        $connection->shouldReceive('insert')
             ->once()
             ->withArgs(static function (string $sql, array $bindings) use (&$capturedBindings): bool {
                 $capturedBindings = $bindings;
@@ -227,6 +237,7 @@ class AuthServiceTest extends TestCase
                     && is_string($bindings[2]);
             })
             ->andReturn(true);
+        $connection->shouldReceive('insert')->once()->withArgs(static fn (string $sql, array $bindings): bool => str_contains($sql, 'buyer_profiles') && $bindings[1] === 100001)->andReturnTrue();
         $redis->shouldReceive('setex')->never();
         $lock->shouldReceive('release')
             ->once()
