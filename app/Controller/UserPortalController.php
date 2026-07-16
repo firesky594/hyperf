@@ -19,7 +19,7 @@ final class UserPortalController extends AbstractController
     {
         $cookie = $this->request->getCookieParams()['uniapi_portal_csrf'] ?? ''; $form = $this->request->input('_csrf', '');
         if (! is_string($cookie) || ! is_string($form) || $cookie === '' || ! hash_equals($cookie, $form)) { $csrf = bin2hex(random_bytes(32)); return $this->responses->loginPage($this->pages->login($csrf, '请求验证失败。'), $csrf, 419); }
-        try { $result = $this->auth->login((string) $this->request->input('username', ''), (string) $this->request->input('password', '')); return $this->responses->login('/workspace', $result['token'], $result['expires_in']); }
+        try { $result = $this->auth->login($this->stringInput('username'), $this->stringInput('password')); return $this->responses->login('/workspace', $result['token'], $result['expires_in']); }
         catch (AuthException $exception) { $csrf = bin2hex(random_bytes(32)); return $this->responses->loginPage($this->pages->login($csrf, $exception->publicMessage()), $csrf, $exception->status()); }
     }
     public function workspace(): ResponseInterface { return $this->render('overview'); }
@@ -36,11 +36,12 @@ final class UserPortalController extends AbstractController
     private function supplierWrite(bool $update): ResponseInterface
     {
         $session = $this->session(); if (! $this->csrf($session)) { return $this->responses->html('请求验证失败。', 419); }
-        try { $args = [(int) $session['user_id'], (string) $this->request->input('company_name', ''), (string) $this->request->input('contact_name', ''), (string) $this->request->input('contact_email', '')]; $update ? $this->identities->updateSupplier(...$args) : $this->identities->applySupplier(...$args); return $this->responses->redirect('/workspace/supplier'); }
+        try { $args = [(int) $session['user_id'], $this->stringInput('company_name'), $this->stringInput('contact_name'), $this->stringInput('contact_email')]; $update ? $this->identities->updateSupplier(...$args) : $this->identities->applySupplier(...$args); return $this->responses->redirect('/workspace/supplier'); }
         catch (AuthException $exception) { return $this->responses->html($exception->publicMessage(), $exception->status()); }
     }
     /** @return array<string,mixed> */
     private function session(): array { $session = $this->request->getAttribute('user_session'); if (! is_array($session)) { throw AuthException::invalidCredentials(); } return $session; }
     /** @param array<string,mixed> $session */
     private function csrf(array $session): bool { $expected = $session['csrf_token'] ?? ''; $actual = $this->request->input('_csrf', ''); return is_string($expected) && is_string($actual) && $expected !== '' && hash_equals($expected, $actual); }
+    private function stringInput(string $key): string { $value=$this->request->input($key,'');if(!is_string($value)){throw AuthException::badRequest('请求字段格式错误。');}return $value; }
 }

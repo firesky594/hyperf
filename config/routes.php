@@ -73,6 +73,12 @@ foreach (['/workspace' => 'workspace', '/workspace/buyer' => 'buyer', '/workspac
 foreach (['/workspace/supplier/apply' => 'supplierApply', '/workspace/supplier/update' => 'supplierUpdate', '/portal/logout' => 'logout'] as $path => $action) {
     Router::post($path, 'App\\Controller\\UserPortalController@' . $action, ['middleware' => [UserAuthMiddleware::class]]);
 }
+foreach (['/workspace/supplier/apis' => 'supplierProducts', '/workspace/supplier/apis/edit' => 'supplierEditor', '/market' => 'market', '/market/detail' => 'detail'] as $path => $action) {
+    Router::get($path, 'App\\Controller\\CatalogController@' . $action, ['middleware' => [UserAuthMiddleware::class]]);
+}
+foreach (['/workspace/supplier/apis/create' => 'create', '/workspace/supplier/apis/save' => 'save', '/workspace/supplier/apis/publish' => 'publish', '/workspace/supplier/apis/unlist' => 'unlist', '/workspace/supplier/apis/next-version' => 'nextVersion'] as $path => $action) {
+    Router::post($path, 'App\\Controller\\CatalogController@' . $action, ['middleware' => [UserAuthMiddleware::class]]);
+}
 
 Router::get('/favicon.ico', function () {
     return '';

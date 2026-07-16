@@ -14,6 +14,7 @@ use App\Command\AdminPermissionSyncCommand;
 use App\Command\AdminSchemaCommand;
 use App\Command\AuthSetupCommand;
 use App\Command\BusinessIdentitySchemaCommand;
+use App\Command\CatalogSchemaCommand;
 
 return [
     AuthSetupCommand::class,
@@ -21,4 +22,5 @@ return [
     AdminSetupCommand::class,
     AdminPermissionSyncCommand::class,
     BusinessIdentitySchemaCommand::class,
+    CatalogSchemaCommand::class,
 ];
