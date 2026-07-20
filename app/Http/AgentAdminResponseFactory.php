@@ -90,6 +90,25 @@ class AgentAdminResponseFactory
     }
 
     /**
+     * 生成清除后台会话 Cookie 的安全 HTML 响应。
+     *
+     * @param string $html 待写入响应的 HTML 内容。
+     * @param int $status 目标业务状态。
+     * @return PsrResponseInterface 当前请求对应的 HTTP 响应。
+     */
+    public function htmlClearingSession(string $html, int $status = 200): PsrResponseInterface
+    {
+        $cookie = $this->cookie(self::SESSION_COOKIE, '', 1, self::SESSION_PATH);
+
+        return $this->secure(
+            $this->response
+                ->withCookie($cookie)
+                ->html($html)
+                ->withStatus($status)
+        );
+    }
+
+    /**
      * 生成安全的 HTTP 跳转响应。
      *
      * @param string $path 请求路径。

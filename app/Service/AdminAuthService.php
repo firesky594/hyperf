@@ -38,11 +38,16 @@ class AdminAuthService
     private const DUMMY_PASSWORD_HASH = '$argon2id$v=19$m=65536,t=4,p=1$dzRMa1Iua1ovSjRyNTk3NA$fan7A8YiM2t8b2PtiRPArU7SCT4zWAiNkzo4/kj2F8w';
 
     private const ATTEMPT_RESERVATION_SCRIPT = <<<'LUA'
+-- KEYS[1]：已确认的失败记录；KEYS[2]：尚未完成校验的活跃预留记录。
+-- ARGV[1]：本次预留标识；ARGV[2]：最大尝试次数；ARGV[3]：限制窗口（秒）。
+-- 使用 Redis 服务器时间，避免应用服务器之间存在时钟偏差。
 local now_parts = redis.call("TIME")
 local now = tonumber(now_parts[1]) + (tonumber(now_parts[2]) / 1000000)
 local maximum = tonumber(ARGV[2])
 local window = tonumber(ARGV[3])
 
+-- 同一限制窗口内的失败记录必须共享最早确定的截止时间。
+-- 如果历史数据的分值不一致，这里统一分值，防止部分记录提前或延后过期。
 local failure_entries = redis.call("ZRANGE", KEYS[1], 0, -1, "WITHSCORES")
 local failure_deadline = nil
 if #failure_entries > 0 then
@@ -52,22 +57,26 @@ if #failure_entries > 0 then
     end
 end
 
+-- 删除已经过期的失败记录，并让整个有序集合在窗口截止时自动释放。
 redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
 if failure_deadline ~= nil and failure_deadline > now then
     redis.call("PEXPIREAT", KEYS[1], math.ceil(failure_deadline * 1000))
 end
 
+-- 清理超时的活跃预留，并根据最后一个活跃预留的截止时间刷新集合过期时间。
 redis.call("ZREMRANGEBYSCORE", KEYS[2], "-inf", now)
 local latest_active = redis.call("ZRANGE", KEYS[2], -1, -1, "WITHSCORES")
 if #latest_active > 0 then
     redis.call("PEXPIREAT", KEYS[2], math.ceil(tonumber(latest_active[2]) * 1000))
 end
 
+-- 已失败次数与并发中的预留次数共同占用尝试额度，避免并发请求绕过限制。
 local current = redis.call("ZCARD", KEYS[1]) + redis.call("ZCARD", KEYS[2])
 if current >= maximum then
     return -1
 end
 
+-- 原子写入本次预留；重复的预留标识视为状态异常。
 local added = redis.call("ZADD", KEYS[2], "NX", now + window, ARGV[1])
 if added ~= 1 then
     return -2
@@ -78,10 +87,14 @@ return 1
 LUA;
 
     private const ATTEMPT_FAILURE_SCRIPT = <<<'LUA'
+-- KEYS[1]：已确认的失败记录；KEYS[2]：尚未完成校验的活跃预留记录。
+-- ARGV[1]：活跃预留标识；ARGV[2]：对应的失败标识；ARGV[3]：限制窗口（秒）。
+-- 使用 Redis 服务器时间，保证窗口计算与预留脚本使用同一时间源。
 local now_parts = redis.call("TIME")
 local now = tonumber(now_parts[1]) + (tonumber(now_parts[2]) / 1000000)
 local window = tonumber(ARGV[3])
 
+-- 首次失败开启固定窗口；后续失败沿用首条失败记录的截止时间。
 local first_failure = redis.call("ZRANGE", KEYS[1], 0, -1, "WITHSCORES")
 local deadline
 if #first_failure == 0 then
@@ -90,18 +103,21 @@ else
     deadline = tonumber(first_failure[2])
 end
 
+-- 修正同一窗口内可能不一致的历史分值，使所有失败记录同时失效。
 if #first_failure > 0 then
     for index = 1, #first_failure, 2 do
         redis.call("ZADD", KEYS[1], "XX", deadline, first_failure[index])
     end
 end
 
+-- 移除两个集合中的过期成员；若原窗口已经结束，则从当前时间开启新窗口。
 redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
 redis.call("ZREMRANGEBYSCORE", KEYS[2], "-inf", now)
 if deadline <= now then
     deadline = now + window
 end
 
+-- 已经转换为失败记录时按幂等成功处理，同时清除可能残留的活跃预留。
 local existing = redis.call("ZSCORE", KEYS[1], ARGV[2])
 if existing then
     deadline = tonumber(existing)
@@ -110,11 +126,13 @@ if existing then
     return 1
 end
 
+-- 只有仍持有本次活跃预留，才能将它转换成失败记录。
 local active = redis.call("ZSCORE", KEYS[2], ARGV[1])
 if not active then
     return 0
 end
 
+-- 原子完成“释放预留并登记失败”；重复失败标识视为状态异常。
 redis.call("ZREM", KEYS[2], ARGV[1])
 local added = redis.call("ZADD", KEYS[1], "NX", deadline, ARGV[2])
 if added ~= 1 then

@@ -91,6 +91,24 @@ class AgentAdminResponseFactoryTest extends TestCase
         $this->assertSecurityHeaders($response);
     }
 
+    public function testHtmlClearingSessionExpiresAdministratorSessionCookie(): void
+    {
+        putenv('ADMIN_COOKIE_SECURE=true');
+
+        $response = $this->factory()->htmlClearingSession('<p>权限不足</p>', 403);
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame('<p>权限不足</p>', (string) $response->getBody());
+        $this->assertSecurityHeaders($response);
+
+        $cookie = $this->cookie($response, '/agent_admin', 'agent_admin_session');
+        self::assertSame('', $cookie->getValue());
+        self::assertTrue($cookie->isCleared());
+        self::assertTrue($cookie->isHttpOnly());
+        self::assertTrue($cookie->isSecure());
+        self::assertSame(Cookie::SAMESITE_STRICT, $cookie->getSameSite());
+    }
+
     public function testLoginCsrfCookieUsesSixHundredSecondDefaultTtl(): void
     {
         putenv('ADMIN_LOGIN_CSRF_TTL');
